@@ -1,0 +1,17 @@
+[general]
+min_perc_profit = 4
+trading_enabled = True
+coin = xrb
+
+[BitGrail]
+ApiKey = None
+Secret = None
+disable_buy = True
+disable_sell = True
+
+[KuCoin]
+ApiKey = None
+Secret = None
+disable_buy = True
+disable_sell = True
+
