@@ -19,7 +19,7 @@ BitGrail_ApiKey = Config.get("BitGrail",'ApiKey')
 BitGrail_Secret = Config.get("BitGrail",'Secret')
 KuCoin_ApiKey = Config.get("KuCoin",'ApiKey')
 KuCoin_Secret = Config.get("KuCoin",'Secret')
-min_perc_profit = float(Config.get("general",'min_perc_profit'))
+min_perc_profit = {'KC': float(Config.get("KuCoin",'buy_at_min_perc_profit')), 'BG': float(Config.get("BitGrail",'buy_at_min_perc_profit'))}
 trading_enabled = float(Config.getboolean("general",'trading_enabled'))
 
 aa = ArbAnalysis()
@@ -66,9 +66,9 @@ def main():
 	profit_BTC = tBG['buy'] - tKC['sell']
 	profit1 = profit_BTC/tKC['sell']*100
 	profit1 -= 0.2 + 0.1 # remove fees
-	margin = profit1 - min_perc_profit
+	margin = profit1 - min_perc_profit['KC']
 	traded, traded_amount, conclusion = (False, 0.0, "NO_ACTION")
-	if(profit1 >= min_perc_profit):
+	if(profit1 >= min_perc_profit['KC']):
 		profit = profit1
 		conclusion = "KC->BG"
 		print("On KuCoin you can buy "+coin+" for "+str(tKC['sell'])+" which sells for "+str(tBG['buy'])+" on BitGrail ("+str(round(profit1,2))+"% profit).")
@@ -106,14 +106,14 @@ def main():
 		else:
 			print("Not allowed to trade anymore!")
 	else:
-		print("Profit (KC->BG) too low: "+str(round(profit1,2))+"% < "+str(min_perc_profit)+"%")
+		print("Profit (KC->BG) too low: "+str(round(profit1,2))+"% < "+str(min_perc_profit['KC'])+"%")
 
 	# Buy on BitGrail, sell on KuCoin
 	profit_BTC = tKC['buy'] - tBG['sell']
 	profit2 = profit_BTC/tBG['sell']*100
 	profit2 -= 0.2 + 0.1 # remove fees
-	margin = profit2 - min_perc_profit
-	if(profit2 >= min_perc_profit):
+	margin = profit2 - min_perc_profit['BG']
+	if(profit2 >= min_perc_profit['BG']):
 		conclusion = "BG->KC"
 		print("On BitGrail you can buy "+coin+" for "+str(tBG['sell'])+" which sells for "+str(tKC['buy'])+" on KuCoin ("+str(round(profit2,2))+"% profit).")
 		print("On BitGrail you can buy "+coin+" for $"+str(tBG['sell']*BTCUSD)+" which sells for $"+str(tKC['buy']*BTCUSD)+" on KuCoin ("+str(round(profit2,2))+"% profit).")
@@ -151,7 +151,7 @@ def main():
 		else:
 			print("Not allowed to trade anymore!")
 	else:
-		print("Profit (BG->KC) too low: "+str(round(profit2,2))+"%")
+		print("Profit (BG->KC) too low: "+str(round(profit2,2))+"% < "+str(min_perc_profit['BG'])+"%")
 	# fake a trade
 	# get list of active orders
 	# result = bg.post('lasttrades')
