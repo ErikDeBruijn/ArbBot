@@ -77,8 +77,15 @@ class Bitgrail_mimic():
             'referrer': 'https://bitgrail.com/market/'+market,
             'x-requested-with': 'XMLHttpRequest'
         } 
+        # Next time the balance is checked, assume it needs updating from server
+        self._balances_xrb = None
         resp = self._session_.post('https://bitgrail.com/market/BTC-XRB',headers=headers, files=payload)
-        print(resp.text)
+        print("DEBUG: bitgrail_mimic got: " + resp.text)
+        if(not resp.text.find('icon-ok-circled')):
+            return None
+        else:
+            #FIXME: return order ID
+            return True
 
     def getBalance(self,market='BTC-XRB',selfTest=False):
         if(not selfTest): self.ensure_working_session()
@@ -204,11 +211,12 @@ def main():
     balance = bgm.getBalance('BTC-XRB')
     print "Balances:",balance
 
+    # bgm.createOrder('BTC-XRB','buy',amount=0.1,price=0.001)
+
 if __name__ == "__main__":
     main()
 
 
-# createOrder('BTC-XRB','buy',amount=0.1,price=0.001)
 
 
 

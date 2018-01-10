@@ -14,7 +14,7 @@ class ArbAnalysis():
     # Best price to get it right now: ASK.
     # Best price to set all is the BID.
 
-    # Ask > Bid
+    # Ask (sell) > Bid (buy)
 
     # def setAuth(self,aKey,aSecret):
     #     self._key = aKey
