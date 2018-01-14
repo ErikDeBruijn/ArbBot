@@ -102,7 +102,7 @@ def main():
 	if(coin.upper() in bg_balance):
 		xrb_in_btc = bg_balance[coin.upper()] * float(ticker['lastDealPrice'])
 		total_in_btc = xrb_in_btc+bg_balance['BTC']
-		print("BitGrail: "+str(round(bg_balance['BTC'],5))+" BTC + "+str(round(bg_balance[coin.upper()],5))+" XRB = "+str(round(total_in_btc,5))+" BTC")
+		balanceStr = "BitGrail: "+str(round(bg_balance['BTC'],5))+" BTC + "+str(round(bg_balance[coin.upper()],5))+" XRB = "+str(round(total_in_btc,5))+" BTC\n"
 	balances = kc_client.get_all_balances()
 	kc_balance = {}
 	for balance in balances:
@@ -113,10 +113,12 @@ def main():
 	if(coin.upper() in kc_balance):
 		xrb_in_btc2 = kc_balance[coin.upper()] * float(ticker['lastDealPrice'])
 		total_in_btc2 = xrb_in_btc2+kc_balance['BTC']
-		print("KuCoin: "+str(round(kc_balance['BTC'],5))+" BTC + "+str(round(kc_balance[coin.upper()],5))+" XRB = "+str(round(total_in_btc2,5))+" BTC")
-	print("Grand total: "+str(round(bg_balance['BTC']+kc_balance['BTC'],5))+" BTC + "+str(round(bg_balance[coin.upper()]+kc_balance[coin.upper()],5))+" XRB = "+str(round(total_in_btc+total_in_btc2,5))+" BTC")
+		balanceStr = balanceStr + "KuCoin: "+str(round(kc_balance['BTC'],5))+" BTC + "+str(round(kc_balance[coin.upper()],5))+" XRB = "+str(round(total_in_btc2,5))+" BTC\n"
+	balanceStr = balanceStr + "Grand total: "+str(round(bg_balance['BTC']+kc_balance['BTC'],5))+" BTC + "+str(round(bg_balance[coin.upper()]+kc_balance[coin.upper()],5))+" XRB = "+str(round(total_in_btc+total_in_btc2,5))+" BTC\n"
+
 	btc_gains = bg_balance['BTC']+kc_balance['BTC']-starting_balance_btc
-	print("BTC gains: "+str(round(btc_gains,5))+" BTC (about € "+str(round(btc_gains*BTCEUR,2))+")")
+	balanceStr = balanceStr + "BTC gains: "+str(round(btc_gains,5))+" BTC (about € "+str(round(btc_gains*BTCEUR,2))+")\n"
+	print balanceStr
 
 	print("\n========== Trade ==========")
 	cheapness_punchline, cheapness_details = compareCheapness(('BitGrail',tBG['sell'],tBG['buy']),('KuCoin',tKC['sell'],tKC['buy']))
@@ -142,7 +144,7 @@ def main():
 			if(Config.getboolean("BitGrail",'disable_sell')):
 				print("Not allowed to sell to BitGrail. Skipping trade.")
 				exit()
-			maxNow = tradeCap(margin,maxNow)
+			maxNow = tradeCap(margin,maxNow,availableForSale = bg_balance[coin.upper()])
 			# Update limits (whatever happens next)
 			updateLimits(coin,maxNow)
 			# Get buy price on market A (KC)
@@ -164,7 +166,7 @@ def main():
 				pp.pprint(buy_order_result)
 				err = "KC order placement failed."
 				updateLimits(coin,0,abortReason=err)
-				telegramBot.text_message(s + err)
+				telegramBot.text_message(s + balanceStr + err)
 				quit("Dude, fix me! I guess I'll be nice and not sell your coins on the the other exchange.")
 
 			# Place order on market B (BG)
@@ -180,6 +182,7 @@ def main():
 			print("BG result:",result)
 			s = s + "\nBitGrail sell order of "+str(maxNow)+" "+coin.upper()+" placed at "+str(sellAt)+" BTC. "
 			s = s + "\nProfit "+str(round(profit1,1))+"% >= "+str(min_perc_profit['KC'])+"%.\n"
+			s = s + balanceStr
 			s = s + "Result: " + str(result)
 			telegramBot.text_message(s)
 		else:
@@ -205,7 +208,7 @@ def main():
 			if(Config.getboolean("KuCoin",'disable_sell')):
 				print("Not allowed to sell to KuCoin. Skipping trade.")
 				exit()
-			maxNow = tradeCap(margin,maxNow)
+			maxNow = tradeCap(margin,maxNow,availableForSale = kc_balance[coin.upper()])
 			# Update limits (whatever happens next)
 			updateLimits(coin,maxNow)
 			# Get buy price on market A (BG)
@@ -235,11 +238,13 @@ def main():
 			if('orderOid' in sell_order_result):
 				s = s + "\nKuCoin sell order of "+str(maxNow)+" "+coin.upper()+" placed at "+str(sellAt)+" BTC."
 				s = s + "\nProfit "+str(round(profit2,1))+"% >= "+str(min_perc_profit['BG'])+"%.\n"
+				s = s + balanceStr
 				print "Order placed: "+sell_order_result['orderOid']
 			else:
 				print "Order probably wasnt placed! Server response: "
 				updateLimits(coin,0,abortReason="KC sell order placement failed?")
 				pp.pprint(sell_order_result)
+				s = s + balanceStr
 				s = s + "\nFailure: "+str(sell_order_result)
 
 			telegramBot.text_message(s)
@@ -264,9 +269,12 @@ def main():
 # sold 57 XRB on KuCoin for 0.00189998
 # could by at 0.00184995
 # KuCoin deposit addr: xrb_3gywx85jgzyxtd44wh69m3inzijsbyw3ozdzmwzozbcqro5ktkm53d8dz583
-def tradeCap(margin,maxNow):
+def tradeCap(margin,maxNow,availableForSale=None):
 	if(margin <= 1):
 		maxNow = min(4+round(margin*4),maxNow)
+		if availableForSale < 200:
+			print("Capped order because balance is low: "+str(availableForSale)+" coins.")
+			maxNow = maxNow * (availableForSale / 200)
 		print("Capped order to "+str(maxNow)+" (profit margin only "+str(round(margin,2))+"% above minimum)")
 		return maxNow
 	return maxNow
