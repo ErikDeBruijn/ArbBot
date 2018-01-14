@@ -9,6 +9,7 @@ import pickle
 import sys
 
 # Run me with "python -i bitgrail_mimic.py" to run arbitrary functions interactively
+# FIXME: allow it to work when no working serialized session exists.
 
 class Bitgrail_mimic():
 
@@ -22,9 +23,13 @@ class Bitgrail_mimic():
 
     def load_session(self):
         # deserialize session
-        with open('bg_session.dump') as fh:
-            sdump = fh.read()
-        self._session_ = pickle.loads(sdump)
+        try:
+            with open('bg_session.dump') as fh:
+                sdump = fh.read()
+                self._session_ = pickle.loads(sdump)
+        except:
+            print "Could not read or load an existing session."
+            self.newSession()
 
     def ensure_working_session(self):
         if(self._selfTestedOK): return True
@@ -181,10 +186,10 @@ class Bitgrail_mimic():
             print(data.decode('utf-8'))
             quit("No valid response from login.")
 
-        self.store_session()
+        sdata = self.store_session()
         with open("bg_session.dump","w") as f:
             f.write(sdata)
-        return session
+        return self._session_
 
     def checkPageForString(self,url,str):
         resp = self._session_.get(url)
