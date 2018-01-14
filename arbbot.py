@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import bitgrail
 import bitgrail_mimic
@@ -23,31 +24,33 @@ KuCoin_ApiKey = Config.get("KuCoin",'ApiKey')
 KuCoin_Secret = Config.get("KuCoin",'Secret')
 min_perc_profit = {'KC': float(Config.get("KuCoin",'buy_at_min_perc_profit')), 'BG': float(Config.get("BitGrail",'buy_at_min_perc_profit'))}
 trading_enabled = float(Config.getboolean("general",'trading_enabled'))
-
+starting_balance_btc = float(Config.get("general",'starting_balance_btc'))
 
 T_BOT_ID = Config.get("Telegram",'telegram_bot_id')
 T_CHAT_ID = Config.get("Telegram",'telegram_chat_id')
 telegramBot = Telegram(T_BOT_ID)
 telegramBot.set_chat_id(T_CHAT_ID)
 
+
 aa = ArbAnalysis()
 
-BTCUSD = 17000
+BTCEUR = 11328
+
 
 def compareCheapness(ex1,ex2):
 	ex1_name, ex1_sell, ex1_buy = ex1
 	ex2_name, ex2_sell, ex2_buy = ex2
 	if((ex1_sell + ex1_buy) - (ex2_sell + ex2_buy)):
+		p = str(round((ex2_sell - ex1_buy)/ex2_sell*100,1)) + '%'
 		exchange1_cheaper = True
 		s1 = ex1_name+" is currently cheaper than "+str(ex2_name)
-		s2 = ex1_name+" (Sell: "+str(ex1_sell)+") is currently cheaper than "+str(ex2_name)+" (Sell: "+str(ex2_sell)+")"
+		s2 = ex1_name+" (Sell: "+str(ex1_sell)+") is currently "+p+" cheaper than "+str(ex2_name)+" (Sell: "+str(ex2_sell)+")"
 	else:
+		p = str(round((ex1_sell - ex2_buy)/ex1_sell*100,1)) + '%'
 		s1 = ex2_name+" is currently cheaper than "+str(ex1_name)
-		s2 = ex2_name+" (Sell: "+str(ex2_sell)+") is currently cheaper than "+str(ex1_name)+" (Sell: "+str(ex1_sell)+")"
+		s2 = ex2_name+" (Sell: "+str(ex2_sell)+") is currently "+p+" cheaper than "+str(ex1_name)+" (Sell: "+str(ex1_sell)+")"
 	print(s2)
 	return s1, s2
-	# KuCoin_CI = Config.get("KuCoin",'Last_CheapnessIndex')
-	# BitGrail_CI = Config.get("KuCoin",'Last_CheapnessIndex')
 
 def main():
 	coin = Config.get("general",'coin')
@@ -55,6 +58,7 @@ def main():
 
 	# print("Connecting to Bitgrail. Using key: " + BitGrail_ApiKey + "...")
 	bg = bitgrail.Bitgrail(BitGrail_ApiKey,BitGrail_Secret)
+	kc_client = Client(KuCoin_ApiKey, KuCoin_Secret)
 	bgm = bitgrail_mimic.Bitgrail_mimic()
 	if(bgm.checkWithdrawals('xrb')):
 		print "BitGrail XRB withdrawals are open."
@@ -62,13 +66,13 @@ def main():
 	else:
 		print "BitGrail XRB withdrawals under maintenance."
 		telegramBot.text_message("XRB withdrawals just became deactivated again! (under maintenance)",topic="Mon.BG.XRB_Withdrawals")
-	balance = bgm.getBalance('BTC-XRB')
-	print "BitGrail balances:",balance
+	bg_balance = bgm.getBalance('BTC-XRB')
 	# bg.setAuth(BitGrail_ApiKey,BitGrail_Secret)
 	ticker = bg.get("ticker","BTC-XRB")
 	tBG = {}
 	tBG['sell'] = float(ticker['ask'])
 	tBG['buy'] = float(ticker['bid'])
+
 	# pp.pprint(ticker)
 	# asks, bids = bg.getOrderBook("BTC-XRB")
 	# print("========= asks =======")
@@ -78,20 +82,43 @@ def main():
 
 	# print("Connecting to KuCoin. Using key: " + KuCoin_ApiKey + "...")
 	# pp.pprint(ticker)
-	print("========== ==========")
+	print("========== Prices ==========")
 	spread = 100 * round((tBG['sell'] - tBG['buy'])/tBG['buy'],2)
 	print("BitGrail  sell: "+str(tBG['sell'])+"")
 	print("BitGrail   buy: "+str(tBG['buy'])+" (spread: "+str(spread)+"%)")
-	kc_client = Client(KuCoin_ApiKey, KuCoin_Secret)
+
 	# depth = client.get_order_book('XRB-BTC', limit=20)
 	ticker = kc_client.get_tick("XRB-BTC")
+	# pp.pprint(ticker)
 	tKC = {}
 	tKC['sell'] = float(ticker['sell'])
 	tKC['buy'] = float(ticker['buy'])
 	spread = 100 * round((tKC['sell'] - tKC['buy'])/tKC['buy'],2)
 	print("KuCoin     buy: "+str(tKC['buy'])+" ")
 	print("KuCoin    sell: "+str(tKC['sell'])+" (spread: "+str(spread)+"%)")
-	print("========== ==========")
+	print("\n========== Balances ==========")
+
+	# Balances
+	if(coin.upper() in bg_balance):
+		xrb_in_btc = bg_balance[coin.upper()] * float(ticker['lastDealPrice'])
+		total_in_btc = xrb_in_btc+bg_balance['BTC']
+		print("BitGrail: "+str(round(bg_balance['BTC'],5))+" BTC + "+str(round(bg_balance[coin.upper()],5))+" XRB = "+str(round(total_in_btc,5))+" BTC")
+	balances = kc_client.get_all_balances()
+	kc_balance = {}
+	for balance in balances:
+		if(balance['coinType'] == 'BTC'):
+			kc_balance['BTC'] = balance['balance']
+		if(balance['coinType'] == coin.upper()):
+			kc_balance[coin.upper()] = balance['balance']
+	if(coin.upper() in kc_balance):
+		xrb_in_btc2 = kc_balance[coin.upper()] * float(ticker['lastDealPrice'])
+		total_in_btc2 = xrb_in_btc2+kc_balance['BTC']
+		print("KuCoin: "+str(round(kc_balance['BTC'],5))+" BTC + "+str(round(kc_balance[coin.upper()],5))+" XRB = "+str(round(total_in_btc2,5))+" BTC")
+	print("Grand total: "+str(round(bg_balance['BTC']+kc_balance['BTC'],5))+" BTC + "+str(round(bg_balance[coin.upper()]+kc_balance[coin.upper()],5))+" XRB = "+str(round(total_in_btc+total_in_btc2,5))+" BTC")
+	btc_gains = bg_balance['BTC']+kc_balance['BTC']-starting_balance_btc
+	print("BTC gains: "+str(round(btc_gains,5))+" BTC (about € "+str(round(btc_gains*BTCEUR,2))+")")
+
+	print("\n========== Trade ==========")
 	cheapness_punchline, cheapness_details = compareCheapness(('BitGrail',tBG['sell'],tBG['buy']),('KuCoin',tKC['sell'],tKC['buy']))
 	telegramBot.text_message(cheapness_punchline,topic="Mon.Cheapness",msg_full=cheapness_details)
 	# Buy on KuCoin, sell on BitGrail
@@ -104,7 +131,7 @@ def main():
 		profit = profit1
 		conclusion = "KC->BG"
 		print("On KuCoin you can buy "+coin+" for "+str(tKC['sell'])+" which sells for "+str(tBG['buy'])+" on BitGrail ("+str(round(profit1,2))+"% profit).")
-		print("On KuCoin you can buy "+coin+" for $"+str(tKC['sell']*BTCUSD)+" which sells for $"+str(tBG['buy']*BTCUSD)+" on BitGrail ("+str(round(profit1,2))+"% profit).")
+		print("On KuCoin you can buy "+coin+" for € "+str(tKC['sell']*BTCEUR)+" which sells for €"+str(tBG['buy']*BTCEUR)+" on BitGrail ("+str(round(profit1,2))+"% profit).")
 
 		if(maxNow > 0) and trading_enabled:
 			maxLeftTotal = getTradeLeftTotal(coin)
@@ -148,15 +175,17 @@ def main():
 				warning = "Whoa... I'm not going to short "+coin+". I almost tried to sell "+str(maxNow)+" but I have a balance of "+str(balance['XRB'])+" on BitGrail. Capping to that."
 				s = s + warning
 				print warning
-				maxNow = min(maxNow,balance['XRB'])
+				maxNow = min(maxNow,balance[coin.upper()])
 			result = bgm.createOrder('BTC-XRB','sell',maxNow,sellAt)
 			print("BG result:",result)
-			s = s + "\nBitGrail Result: " + str(result)
+			s = s + "\nBitGrail sell order of "+str(maxNow)+" "+coin.upper()+" placed at "+str(sellAt)+" BTC. "
+			s = s + "\nProfit "+str(round(profit1,1))+"% >= "+str(min_perc_profit['KC'])+"%.\n"
+			s = s + "Result: " + str(result)
 			telegramBot.text_message(s)
 		else:
 			print("Not allowed to trade anymore!")
 	else:
-		print("Profit (KC->BG) too low: "+str(round(profit1,2))+"% < "+str(min_perc_profit['KC'])+"%")
+		print("KC->BG profit below "+str(min_perc_profit['KC'])+"%:\t"+str(round(profit1,2))+"%")
 
 	# Buy on BitGrail, sell on KuCoin
 	profit_BTC = tKC['buy'] - tBG['sell']
@@ -166,7 +195,7 @@ def main():
 	if(profit2 >= min_perc_profit['BG']):
 		conclusion = "BitGrail is CHEAPER!"
 		print("On BitGrail you can buy "+coin+" for "+str(tBG['sell'])+" which sells for "+str(tKC['buy'])+" on KuCoin ("+str(round(profit2,2))+"% profit).")
-		print("On BitGrail you can buy "+coin+" for $"+str(tBG['sell']*BTCUSD)+" which sells for $"+str(tKC['buy']*BTCUSD)+" on KuCoin ("+str(round(profit2,2))+"% profit).")
+		print("On BitGrail you can buy "+coin+" for € "+str(tBG['sell']*BTCEUR)+" which sells for € "+str(tKC['buy']*BTCEUR)+" on KuCoin ("+str(round(profit2,2))+"% profit).")
 		if(maxNow > 0) and trading_enabled:
 			maxLeftTotal = getTradeLeftTotal(coin)
 			print("Most I can trade now is: "+str(maxNow)+" "+coin+" of "+str(maxLeftTotal)+" total.")
@@ -204,7 +233,8 @@ def main():
 			sell_order_result = kc_client.create_sell_order('XRB-BTC', str(sellAt), str(maxNow))
 			# {   u'orderOid': u'5a54f203de88b3646e127e2f'}
 			if('orderOid' in sell_order_result):
-				s = s + "Order placed."
+				s = s + "\nKuCoin sell order of "+str(maxNow)+" "+coin.upper()+" placed at "+str(sellAt)+" BTC."
+				s = s + "\nProfit "+str(round(profit2,1))+"% >= "+str(min_perc_profit['BG'])+"%.\n"
 				print "Order placed: "+sell_order_result['orderOid']
 			else:
 				print "Order probably wasnt placed! Server response: "
@@ -216,7 +246,7 @@ def main():
 		else:
 			print("Not allowed to trade anymore!")
 	else:
-		print("Profit (BG->KC) too low: "+str(round(profit2,2))+"% < "+str(min_perc_profit['BG'])+"%")
+		print("BG->KC profit below "+str(min_perc_profit['BG'])+"%:\t"+str(round(profit2,2))+"%")
 	# fake a trade
 	# get list of active orders
 	# result = bg.post('lasttrades')
