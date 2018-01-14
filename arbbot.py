@@ -11,10 +11,13 @@ from arbanalysis import ArbAnalysis
 import csv
 import datetime
 from modules.Telegram import Telegram
+import socket
+
 
 Config = ConfigParser.ConfigParser()
 Config.read("./.settings.ini")
 
+dt = datetime.datetime.now().isoformat()
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -36,6 +39,13 @@ aa = ArbAnalysis()
 
 BTCEUR = 11328
 
+def getIp():
+    return str([l for l in ([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] 
+if not ip.startswith("127.")][:1], [[(s.connect(('8.8.8.8', 53)), 
+s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, 
+socket.SOCK_DGRAM)]][0][1]]) if l][0][0])
+
+graphURL = "http://"+ getIp() + ":8050/"
 
 def compareCheapness(ex1,ex2):
 	ex1_name, ex1_sell, ex1_buy = ex1
@@ -53,6 +63,7 @@ def compareCheapness(ex1,ex2):
 	return s1, s2
 
 def main():
+	print("========== ArbBot ========== "+str(dt))
 	coin = Config.get("general",'coin')
 	maxNow = getTradeMaxNow(coin)
 
@@ -148,10 +159,10 @@ def main():
 			# Update limits (whatever happens next)
 			updateLimits(coin,maxNow)
 			# Get buy price on market A (KC)
-			buyAt = tKC['sell']*1.01 # asking price to get it at instantly
+			buyAt = tKC['sell']*1.02 # asking price to get it at instantly
 			# TODO: check order book if enough is actually available at that price!
 			# Get selling price on market B (BG)
-			sellAt = tBG['buy']*0.99 # price people already want to buy it at
+			sellAt = tBG['buy']*0.98 # price people already want to buy it at
 			# Place order on market A (KC)
 			print("kc_client.create_buy_order('XRB-BTC', "+str(buyAt)+", "+str(maxNow)+")")
 			traded = True
@@ -184,7 +195,7 @@ def main():
 			s = s + "\nProfit "+str(round(profit1,1))+"% >= "+str(min_perc_profit['KC'])+"%.\n"
 			s = s + balanceStr
 			s = s + "Result: " + str(result)
-			telegramBot.text_message(s)
+			telegramBot.text_message(s + "\n" + graphURL)
 		else:
 			print("Not allowed to trade anymore!")
 	else:
@@ -247,7 +258,7 @@ def main():
 				s = s + balanceStr
 				s = s + "\nFailure: "+str(sell_order_result)
 
-			telegramBot.text_message(s)
+			telegramBot.text_message(s + "\n" + graphURL)
 		else:
 			print("Not allowed to trade anymore!")
 	else:
@@ -263,18 +274,17 @@ def main():
 		# orders = kc_client.get_active_orders('XRM-BTC')
 		# pp.pprint(orders)
 
-	dt = datetime.datetime.now().isoformat()
-	# time,bitgrail_sell,bitgrail_buy,kcoin_sell,kcoin_buy,profitKC2BG,profitBG2KC
+	# time	bitgrail_sell	bitgrail_buy	kcoin_sell	kcoin_buy	profitKC2BG	profitBG2KC	traded
 	logCSV([dt,tBG['sell'],tBG['buy'],tKC['sell'],tKC['buy'],str(round(profit1,2))+"%",str(round(profit2,2))+"%",traded_amount])
-# sold 57 XRB on KuCoin for 0.00189998
-# could by at 0.00184995
-# KuCoin deposit addr: xrb_3gywx85jgzyxtd44wh69m3inzijsbyw3ozdzmwzozbcqro5ktkm53d8dz583
+
 def tradeCap(margin,maxNow,availableForSale=None):
+	print(str(availableForSale) + " coins available for sale.")
+	if availableForSale < 200:
+		print("Capped order because balance is low: "+str(availableForSale)+" coins. Margin before: "+str(margin))
+		margin = margin * (availableForSale / 200)
+		print("Margin after: "+str(margin))
 	if(margin <= 1):
-		maxNow = min(4+round(margin*4),maxNow)
-		if availableForSale < 200:
-			print("Capped order because balance is low: "+str(availableForSale)+" coins.")
-			maxNow = maxNow * (availableForSale / 200)
+		maxNow = min(0.1+round(margin*4),maxNow)
 		print("Capped order to "+str(maxNow)+" (profit margin only "+str(round(margin,2))+"% above minimum)")
 		return maxNow
 	return maxNow
@@ -315,8 +325,3 @@ if __name__ == "__main__":
     main()
 
 
-# OLDER STUFF
-
-
-	# orderbook = bg.get("orderbook","BTC-XRB")
-	# aa.parse_orders(orderbook)
