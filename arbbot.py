@@ -21,6 +21,8 @@ dt = datetime.datetime.now().isoformat()
 
 pp = pprint.PrettyPrinter(indent=4)
 
+logFile = Config.get("general",'logFile')
+
 BitGrail_ApiKey = Config.get("BitGrail",'ApiKey')
 BitGrail_Secret = Config.get("BitGrail",'Secret')
 KuCoin_ApiKey = Config.get("KuCoin",'ApiKey')
@@ -146,7 +148,8 @@ def main():
 		print("On KuCoin you can buy "+coin+" for "+str(tKC['sell'])+" which sells for "+str(tBG['buy'])+" on BitGrail ("+str(round(profit1,2))+"% profit).")
 		print("On KuCoin you can buy "+coin+" for € "+str(tKC['sell']*BTCEUR)+" which sells for €"+str(tBG['buy']*BTCEUR)+" on BitGrail ("+str(round(profit1,2))+"% profit).")
 
-		if(maxNow > 0) and trading_enabled:
+		maxNow = tradeCap(margin,maxNow,availableForSale = bg_balance[coin.upper()])
+		if(maxNow > 0.1) and trading_enabled:
 			maxLeftTotal = getTradeLeftTotal(coin)
 			print("Most I can trade now is: "+str(maxNow)+" "+coin+" of "+str(maxLeftTotal)+" total.")
 			if(Config.getboolean("KuCoin",'disable_buy')):
@@ -155,11 +158,11 @@ def main():
 			if(Config.getboolean("BitGrail",'disable_sell')):
 				print("Not allowed to sell to BitGrail. Skipping trade.")
 				exit()
-			maxNow = tradeCap(margin,maxNow,availableForSale = bg_balance[coin.upper()])
 			# Update limits (whatever happens next)
 			updateLimits(coin,maxNow)
 			# Get buy price on market A (KC)
 			buyAt = tKC['sell']*1.02 # asking price to get it at instantly
+
 			# TODO: check order book if enough is actually available at that price!
 			# Get selling price on market B (BG)
 			sellAt = tBG['buy']*0.98 # price people already want to buy it at
@@ -210,7 +213,8 @@ def main():
 		conclusion = "BitGrail is CHEAPER!"
 		print("On BitGrail you can buy "+coin+" for "+str(tBG['sell'])+" which sells for "+str(tKC['buy'])+" on KuCoin ("+str(round(profit2,2))+"% profit).")
 		print("On BitGrail you can buy "+coin+" for € "+str(tBG['sell']*BTCEUR)+" which sells for € "+str(tKC['buy']*BTCEUR)+" on KuCoin ("+str(round(profit2,2))+"% profit).")
-		if(maxNow > 0) and trading_enabled:
+		maxNow = tradeCap(margin,maxNow,availableForSale = kc_balance[coin.upper()])
+		if(maxNow > 0.1) and trading_enabled:
 			maxLeftTotal = getTradeLeftTotal(coin)
 			print("Most I can trade now is: "+str(maxNow)+" "+coin+" of "+str(maxLeftTotal)+" total.")
 			if(Config.getboolean("BitGrail",'disable_buy')):
@@ -219,14 +223,14 @@ def main():
 			if(Config.getboolean("KuCoin",'disable_sell')):
 				print("Not allowed to sell to KuCoin. Skipping trade.")
 				exit()
-			maxNow = tradeCap(margin,maxNow,availableForSale = kc_balance[coin.upper()])
 			# Update limits (whatever happens next)
 			updateLimits(coin,maxNow)
 			# Get buy price on market A (BG)
-			buyAt = tBG['sell']*1.01 # asking price to get it at instantly
+			buyAt = tBG['sell']*1.02 # asking price to get it at instantly
 			# TODO: check order book if enough is actually available at that price!
 			# Get selling price on market B (KC)
-			sellAt = tKC['buy']*0.99 # price people already want to buy it at
+			sellAt = tKC['buy']*0.98 # price people already want to buy it at
+			sellAt = tKC['buy']*1.02 # temporarily don't sell to increase the coin exposure
 			# Place buy order on market A (BG)
 			traded = True
 			traded_amount = -maxNow
@@ -278,19 +282,18 @@ def main():
 	logCSV([dt,tBG['sell'],tBG['buy'],tKC['sell'],tKC['buy'],str(round(profit1,2))+"%",str(round(profit2,2))+"%",traded_amount])
 
 def tradeCap(margin,maxNow,availableForSale=None):
-	print(str(availableForSale) + " coins available for sale.")
-	if availableForSale < 200:
+	if availableForSale < 400:
 		print("Capped order because balance is low: "+str(availableForSale)+" coins. Margin before: "+str(margin))
-		margin = margin * (availableForSale / 200)
+		margin = margin * (availableForSale / 400)
 		print("Margin after: "+str(margin))
 	if(margin <= 1):
-		maxNow = min(0.1+round(margin*4),maxNow)
+		maxNow = min(0+round(margin*4),maxNow)
 		print("Capped order to "+str(maxNow)+" (profit margin only "+str(round(margin,2))+"% above minimum)")
 		return maxNow
 	return maxNow
 
 def logCSV(vars):
-	with open('log.csv','a') as f:
+	with open(logFile,'a') as f:
 		writer = csv.writer(f, delimiter='\t')
 		writer.writerow(vars)
 
