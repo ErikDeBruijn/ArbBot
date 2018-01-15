@@ -1,21 +1,44 @@
 # -*- coding: utf-8 -*-
 import dash
+from dash.dependencies import Input, Output, State
 import dash_core_components as dcc
 import dash_html_components as html
 
+import plotly
 import plotly.graph_objs as go
 import plotly.plotly as py
 import plotly.figure_factory as ff
 
-import socket
 import datetime, time
 
+import pandas as pd
+
+import flask
+import glob
+import os
+
+import ConfigParser
+
+Config = ConfigParser.ConfigParser()
+Config.read("./.settings.ini")
+
+symbol = Config.get("general",'symbol').upper()
+symbol_name = Config.get("general",'symbol_name').lower()
+symbol_base = Config.get("general",'symbol_base').upper()
+
+logFilePrefix = Config.get("general",'logFilePrefix')
+
+logFile = logFilePrefix+'_'+symbol+'-'+symbol_base+'.csv'
+
+image_directory = '/Users/erik/Dev/cryptocurrency/arbbot/assets/128x128/'
+list_of_images = [os.path.basename(x) for x in glob.glob('{}*.png'.format(image_directory))]
+static_image_route = '/static/'
+# print list_of_images
 
 def to_unix_time(dt):
     epoch =  datetime.datetime.utcfromtimestamp(0)
     return (dt - epoch).total_seconds() * 1000
 
-import pandas as pd
 
 #                          time  bitgrail_sell  bitgrail_buy  kcoin_sell  \
 # 0  2018-01-06T01:58:30.214749       0.001944      0.001926    0.001989
@@ -30,25 +53,52 @@ import pandas as pd
 # 2    0.00198      -3.46%       1.34%     NaN
 # 3    0.00198      -3.41%       1.24%     NaN
 # 4    0.00198      -3.26%       1.24%     NaN
-def getLayout():
-    print "===== gathering latest data ====="
-    skipfirst = 1500
+
+app = dash.Dash()
+
+
+intervalObject = dcc.Interval(id='interval-component', interval=20*1000)
+checkList = dcc.Checklist(
+    id = 'checklist',
+    options=[
+        {'label': 'Display Trades', 'value': 'trades'},
+        {'label': 'Remember View', 'value': 'lockView'}
+    ],
+    values=['trades','lockView'],
+    labelStyle={'display': 'inline-block'}
+)
+
+app.layout = html.Div(children=[
+    html.Div(children=[
+        intervalObject,
+        html.Img(src='/static/'+symbol_name+'.png'),
+        checkList,
+        html.Div(id='lastUpdate')]),    
+        dcc.Graph(id='prices-graph',config={'scrollZoom': True})
+])
+
+
+@app.callback(Output('lastUpdate', 'children'),[Input('interval-component', 'n_intervals')])
+def lastUpdate(n):
+    return 'Last updated: ' + str(datetime.datetime.now())
+
+@app.callback(
+    Output(
+        'prices-graph', 'figure'),
+        [Input('interval-component', 'n_intervals'),Input('checklist','values')],
+        [State('prices-graph', 'relayoutData')]
+)
+def getGraph(n,checkBoxes,relayout_data):
+    print "checkboxes: "+str(checkBoxes)
+    # relayout_data contains data on the zoom and range actions
+    print("relayout_data: "+str(relayout_data))
+    # FIXME: it only remembers the specific axis that was most recently changed
+    print "===== gathering latest data =====" + symbol + '-' + symbol_base
+    skipfirst = int(Config.get("webserver",'skipFirstNum'))
     skiprows = range(1,skipfirst+1)
     cols = ['time','bitgrail_sell','bitgrail_buy','kcoin_sell','kcoin_buy','traded']
-    df = pd.read_csv("log.csv",delimiter='\t',usecols=cols,header=0,parse_dates=[0],skiprows=skiprows)
-    # dfBG = pd.read_csv("log.csv",delimiter='\t',usecols=['time','bitgrail_sell'],header=0,parse_dates=[0],skiprows=skiprows)
-    # dfKC = pd.read_csv("log.csv",delimiter='\t',usecols=['time',],header=0,parse_dates=[0],skiprows=skiprows)
-
-    # df = pd.read_csv(
-    #     'https://gist.githubusercontent.com/chriddyp/' +
-    #     '5d1ea79569ed194d432e56108a04d188/raw/' +
-    #     'a9f9e8076b837d541398e999dcbac2b2826a81f8/'+
-    #     'gdp-life-exp-2007.csv')
-
-    print(df.head())
-
-    # exit()
-    # table = ff.create_table(df)
+    # print(df.head())
+    df = pd.read_csv(logFile,delimiter='\t',usecols=cols,header=0,parse_dates=[0],skiprows=skiprows)
 
     trace = {}
     trace['BG_sell'] = go.Scatter(
@@ -87,20 +137,9 @@ def getLayout():
             color = ('rgb(31, 134, 233)'),
             width = 1)
     )
-    trace['traded'] = go.Bar(
-        x = df['time'],
-        y = df['traded'],
-        yaxis = 'y2',
-        name = 'traded',
-        # color = ('rgb(255, 145, 0)'),
-        width = 0.4
-    )
-
-    data = [trace['BG_sell'], trace['BG_buy'], trace['KC_sell'], trace['KC_buy']]
-    # data = [trace['BG_sell'], trace['BG_buy'], trace['KC_sell'], trace['KC_buy'], trace['traded']]
 
     # Edit the layout
-    layout = dict(title = 'Prices of exchanges',
+    layout = dict(title = 'Prices for ' + symbol + '-' + symbol_base + ' on two exchanges [' +Config.get("general",'instance_name')+']',
                   xaxis = dict(
                     title = 'Time',
                     range = [1000*time.time()-60*60*24000,1000*time.time()],
@@ -128,9 +167,63 @@ def getLayout():
                     
                     type='date'),
                   yaxis = dict(title = 'Price (BTC)'),
-                  yaxis2 = dict(title = 'Revenue (BTC)', side='right',overlaying='y')
-                  
+                  height = 700
                   )
+    if('trades' in checkBoxes):
+        df_filtered = df.query('traded>=0')
+        trace['bought'] = go.Bar(
+            x = df_filtered['time'],
+            y = df_filtered['traded'],
+            yaxis = 'y2',
+            name = 'bought on BitGrail',
+            # color = ('rgb(255, 145, 0)'),
+            marker=dict(
+                color='rgb(158,202,225)',
+                line=dict(
+                    color='rgb(12, 205, 24)',
+                    width=2,
+                )
+            ),
+            opacity=0.6,
+        )
+
+        df_filtered = df.query('traded<0')
+        trace['sold'] = go.Bar(
+            x = df_filtered['time'],
+            y = df_filtered['traded']*-1,
+            yaxis = 'y2',
+            name = 'bought on KuCoin',
+            # color = ('rgb(255, 145, 0)'),
+            marker=dict(
+                color='rgb(158,202,225)',
+                line=dict(
+                    color='rgb(31, 134, 233',
+                    width=2,
+                )
+            ),
+            opacity=0.6,
+        )
+        layout['yaxis2'] = {'title': '# of '+symbol_name+' bought & sold ('+symbol+')', 'side':'right', 'overlaying':'y'}
+        data = [trace['BG_sell'], trace['BG_buy'], trace['KC_sell'], trace['KC_buy'],trace['bought'],trace['sold']]
+    else:
+        data = [trace['BG_sell'], trace['BG_buy'], trace['KC_sell'], trace['KC_buy']]
+
+    if relayout_data and ('lockView' in checkBoxes):
+        if 'xaxis.range[0]' in relayout_data:
+            layout['xaxis']['range'] = [
+                relayout_data['xaxis.range[0]'],
+                relayout_data['xaxis.range[1]']
+            ]
+        if 'yaxis.range[0]' in relayout_data:
+            layout['yaxis']['range'] = [
+                relayout_data['yaxis.range[0]'],
+                relayout_data['yaxis.range[1]']
+            ]
+        if 'yaxis2.range[0]' in relayout_data and 'yaxis2' in layout:
+            layout['yaxis2']['range'] = [
+                relayout_data['yaxis2.range[0]'],
+                relayout_data['yaxis2.range[1]']
+            ]
 
     layout['annotations'] = [
         dict(xref='paper', yref='paper', x=0.95, y=.5,
@@ -142,29 +235,21 @@ def getLayout():
               showarrow=False)
     ]
 
-    config = {'scrollZoom': True}
-    fig = dict(data=data, layout=layout)
-    graphObject = dcc.Graph(
-        id='prices',
-        figure=fig,config=config
-    )
-    layout = html.Div(children=[
-    html.Div(children='Last data fetch: ' + str(datetime.datetime.now())),
-
-    graphObject
-    ])
-    return layout
+    return {'data': data, 'layout': layout}
 
 
-app = dash.Dash()
 
-# fig = createFig()
-
-
-app.layout = getLayout
-
-PORT = 8050
+PORT = int(Config.get("webserver",'webServerPort'))
 ADDRESS = '0.0.0.0'
+
+@app.server.route('{}<image_path>.png'.format(static_image_route))
+def serve_image(image_path):
+    image_name = '{}.png'.format(image_path)
+    if image_name not in list_of_images:
+        raise Exception('"{}" is excluded from the allowed static files'.format(image_path))
+    print "flask.send_from_directory(image_directory="+image_directory+", image_name="+image_name+")"
+    return flask.send_from_directory(image_directory, image_name)
+
 
 if __name__ == '__main__':
     app.run_server(port=PORT, host=ADDRESS, debug=True)
