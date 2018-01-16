@@ -71,6 +71,7 @@ checkList = dcc.Checklist(
 app.layout = html.Div(children=[
     html.Div(children=[
         intervalObject,
+        html.Link(rel="shortcut icon", href="favicon.ico"), #, type="image/x-icon"
         html.Img(src='/static/'+symbol_name+'.png'),
         checkList,
         html.Div(id='lastUpdate')]),    
@@ -241,6 +242,11 @@ def getGraph(n,checkBoxes,relayout_data):
 
 PORT = int(Config.get("webserver",'webServerPort'))
 ADDRESS = '0.0.0.0'
+
+@app.server.route('/favicon.ico')
+def favicon():
+    print "flask.send_from_directory(image_directory="+image_directory+", image_name="+symbol_name+'.png'+")"
+    return flask.send_from_directory(image_directory,symbol_name+'.png')
 
 @app.server.route('{}<image_path>.png'.format(static_image_route))
 def serve_image(image_path):
