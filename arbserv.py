@@ -22,6 +22,16 @@ import ConfigParser
 Config = ConfigParser.ConfigParser()
 Config.read("./.settings.ini")
 
+def conf(topicDotKey,type='string'):
+    (topic,k) = topicDotKey.split('.')
+    if(type in ('boolean','bool')):
+        return Config.get(topic,k).lower() in ("yes", "true", "t", "1")
+    if(type in ('float')):
+        return float(Config.get(topic,k))
+    return Config.get(topic,k)
+
+app = dash.Dash()
+
 symbol = Config.get("general",'symbol').upper()
 symbol_name = Config.get("general",'symbol_name').lower()
 symbol_base = Config.get("general",'symbol_base').upper()
@@ -54,8 +64,7 @@ def to_unix_time(dt):
 # 3    0.00198      -3.41%       1.24%     NaN
 # 4    0.00198      -3.26%       1.24%     NaN
 
-app = dash.Dash()
-
+app.title = symbol+'-'+symbol_base+' [' + conf('general.instance_name') +']'
 
 intervalObject = dcc.Interval(id='interval-component', interval=20*1000)
 checkList = dcc.Checklist(
