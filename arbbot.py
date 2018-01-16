@@ -41,6 +41,7 @@ symbol_base = conf('general.symbol_base').upper()
 
 BTCEUR = 11328
 
+
 def getIp():
     return str([l for l in ([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] 
 if not ip.startswith("127.")][:1], [[(s.connect(('8.8.8.8', 53)), 
@@ -141,6 +142,7 @@ def main():
 		print("On KuCoin you can buy "+symbol+" for € "+str(tKC['sell']*BTCEUR)+" which sells for €"+str(tBG['buy']*BTCEUR)+" on BitGrail ("+str(round(profit1,2))+"% profit).")
 
 		maxNow = tradeCap(margin,maxNow,availableForSale = bg_balance[symbol])
+		print (maxNow,conf('general.min_trade_size','float'))
 		if(maxNow > conf('general.min_trade_size','float')) and conf('general.trading_enabled','bool'):
 			maxLeftTotal = getTradeLeftTotal(symbol)
 			print("Most I can trade now is: "+str(maxNow)+" "+symbol+" of "+str(maxLeftTotal)+" total.")
@@ -159,6 +161,10 @@ def main():
 			# Get selling price on market B (BG)
 			sellAt = tBG['buy']*0.98 # price people already want to buy it at
 			# Place order on market A (KC)
+			if(buyAt > sellAt):
+				s = "I'm paying more on BitGrail than I'm getting from the sale on KuCoin (buyAt: "+str(buyAt)+", sellAt: "+str(sellAt)+")!"
+				print(s)
+				telegramBot.text_message(s)
 			print("kc_client.create_buy_order("+symbol+'-'+symbol_base+", "+str(buyAt)+", "+str(maxNow)+")")
 			traded = True
 			traded_amount = maxNow
@@ -192,7 +198,10 @@ def main():
 			s = s + "Result: " + str(result)
 			telegramBot.text_message(s + "\n" + graphURL)
 		else:
-			print("Not allowed to trade anymore!")
+			if(conf('general.trading_enabled','bool')):
+				print("Not allowed to trade this small amount!")
+			else:
+				print("Not allowed to trade anymore!")
 	else:
 		print("KC->BG profit below "+str(min_perc_profit['KC'])+"%:\t"+str(round(profit1,2))+"%")
 
@@ -218,44 +227,52 @@ def main():
 			# Update limits (whatever happens next)
 			updateLimits(symbol,maxNow)
 			# Get buy price on market A (BG)
-			buyAt = tBG['sell']*1.02 # asking price to get it at instantly
+			buyAt = tBG['sell']*1.03 # asking price to get it at instantly
 			# TODO: check order book if enough is actually available at that price!
 			# Get selling price on market B (KC)
 			sellAt = tKC['buy']*0.97 # price people already want to buy it at
 			# Place buy order on market A (BG)
-			traded = True
-			traded_amount = -maxNow
-			s = "BitGrail: creating buy order of "+str(maxNow)+" "+symbol+" at "+str(buyAt)+"."
-			print(s)
-			bg_balance = bgm.getBalance()
-			if(bg_balance[symbol] < maxNow * buyAt):
-				s = s + "Not enough coins.\n"
-				print "Crap. I ran out of "+symbol_base+" on the exchange... Want to buy: "+str(maxNow)+" but I have a balance of "+str(bg_balance[symbol_base])+" on BitGrail."
-				print("\nI N S E R T   C O I N\n")
-				quit("I'll stop purchasing now.")
-			result = bgm.createOrder(symbol_base+'-'+symbol,'buy',maxNow,buyAt)
-			print("BG result:",result)
-			s = s + "\nResult: "+str(result)
-
-			# Place sell order on market B (KC)
-			print("kc_client.create_sell_order("+symbol_base+'-'+symbol+", "+str(sellAt)+", "+str(maxNow)+")")
-			sell_order_result = kc_client.create_sell_order(symbol+'-'+symbol_base, str(sellAt), str(maxNow))
-			# {   u'orderOid': u'5a54f203de88b3646e127e2f'}
-			if('orderOid' in sell_order_result):
-				s = s + "\nKuCoin sell order of "+str(maxNow)+" "+symbol+" placed at "+str(sellAt)+" "+symbol_base+"."
-				s = s + "\nProfit "+str(round(profit2,1))+"% >= "+str(min_perc_profit['BG'])+"%.\n"
-				s = s + balanceStr
-				print "Order placed: "+sell_order_result['orderOid']
+			if(buyAt > sellAt):
+				s = "would potentially have paid more to buy that I'd get to sell. Not doing anything!"
+				print(s)
+				telegramBot.text_message(s)
 			else:
-				print "Order probably wasnt placed! Server response: "
-				updateLimits(symbol,0,abortReason="KC sell order placement failed?")
-				pp.pprint(sell_order_result)
-				s = s + balanceStr
-				s = s + "\nFailure: "+str(sell_order_result)
+				traded = True
+				traded_amount = -maxNow
+				s = "BitGrail: creating buy order of "+str(maxNow)+" "+symbol+" at "+str(buyAt)+"."
+				print(s)
+				bg_balance = bgm.getBalance()
+				if(bg_balance[symbol] < maxNow * buyAt):
+					s = s + "Not enough coins.\n"
+					print "Crap. I ran out of "+symbol_base+" on the exchange... Want to buy: "+str(maxNow)+" but I have a balance of "+str(bg_balance[symbol_base])+" on BitGrail."
+					print("\nI N S E R T   C O I N\n")
+					quit("I'll stop purchasing now.")
+				result = bgm.createOrder(symbol_base+'-'+symbol,'buy',maxNow,buyAt)
+				print("BG result:",result)
+				s = s + "\nResult: "+str(result)
 
-			telegramBot.text_message(s + "\n" + graphURL)
+				# Place sell order on market B (KC)
+				print("kc_client.create_sell_order("+symbol_base+'-'+symbol+", "+str(sellAt)+", "+str(maxNow)+")")
+				sell_order_result = kc_client.create_sell_order(symbol+'-'+symbol_base, str(sellAt), str(maxNow))
+				# {   u'orderOid': u'5a54f203de88b3646e127e2f'}
+				if('orderOid' in sell_order_result):
+					s = s + "\nKuCoin sell order of "+str(maxNow)+" "+symbol+" placed at "+str(sellAt)+" "+symbol_base+"."
+					s = s + "\nProfit "+str(round(profit2,1))+"% >= "+str(min_perc_profit['BG'])+"%.\n"
+					s = s + balanceStr
+					print "Order placed: "+sell_order_result['orderOid']
+				else:
+					print "Order probably wasnt placed! Server response: "
+					updateLimits(symbol,0,abortReason="KC sell order placement failed?")
+					pp.pprint(sell_order_result)
+					s = s + balanceStr
+					s = s + "\nFailure: "+str(sell_order_result)
+
+				telegramBot.text_message(s + "\n" + graphURL)
 		else:
-			print("Not allowed to trade anymore!")
+			if(conf('general.trading_enabled','bool')):
+				print("Not allowed to trade this small amount!")
+			else:
+				print("Not allowed to trade anymore!")
 	else:
 		print("BG->KC profit below "+str(min_perc_profit['BG'])+"%:\t"+str(round(profit2,2))+"%")
 
