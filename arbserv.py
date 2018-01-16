@@ -190,7 +190,7 @@ def getGraph(n,checkBoxes,relayout_data):
             marker=dict(
                 color='rgb(158,202,225)',
                 line=dict(
-                    color='rgb(12, 205, 24)',
+                    color='rgb(31, 134, 233',
                     width=2,
                 )
             ),
@@ -207,7 +207,7 @@ def getGraph(n,checkBoxes,relayout_data):
             marker=dict(
                 color='rgb(158,202,225)',
                 line=dict(
-                    color='rgb(31, 134, 233',
+                    color='rgb(12, 205, 24)',
                     width=2,
                 )
             ),
