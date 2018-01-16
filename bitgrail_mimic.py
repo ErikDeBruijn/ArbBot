@@ -16,7 +16,14 @@ class Bitgrail_mimic():
     def __init__(self):
         self._session_ = None
         self._selfTestedOK = False
-        self._balances_xrb = None
+        self._balance_cached = None
+        self._symbol = None
+        self._symbol_base = None
+
+    def set_coin(self,symbol,symbol_base):
+        self._symbol = symbol
+        self._symbol_base = symbol_base
+        self._market = symbol_base + '-' + symbol
 
     def store_session(self):
         return pickle.dumps(self._session_)
@@ -34,7 +41,7 @@ class Bitgrail_mimic():
     def ensure_working_session(self):
         if(self._selfTestedOK): return True
         if(not self._session_): self.load_session()
-        balance = self.getBalance('BTC-XRB',selfTest=True)
+        balance = self.getBalance(selfTest=True)
         if(not balance):
             print "Session needs to be recreated..."
             session = self.newSession()
@@ -83,8 +90,8 @@ class Bitgrail_mimic():
             'x-requested-with': 'XMLHttpRequest'
         } 
         # Next time the balance is checked, assume it needs updating from server
-        self._balances_xrb = None
-        resp = self._session_.post('https://bitgrail.com/market/BTC-XRB',headers=headers, files=payload)
+        self._balance_cached = None
+        resp = self._session_.post('https://bitgrail.com/market/'+market,headers=headers, files=payload)
         print("DEBUG: bitgrail_mimic got: " + resp.text)
         if(not resp.text.find('icon-ok-circled')):
             return None
@@ -92,16 +99,16 @@ class Bitgrail_mimic():
             #FIXME: return order ID
             return True
 
-    def getBalance(self,market='BTC-XRB',selfTest=False):
+    def getBalance(self,selfTest=False):
         if(not selfTest): self.ensure_working_session()
         # FIXME: some balance can be reserved, better to use /wallets for info!
-        if(not self._balances_xrb):
-            resp = self._session_.get("https://bitgrail.com/market/"+market)
-            self._balances_xrb = resp.text
+        if(not self._balance_cached):
+            resp = self._session_.get("https://bitgrail.com/market/"+self._market)
+            self._balance_cached = resp.text
         balance = {}
-        balance['BTC'] = self.parseBalance(self._balances_xrb,'BTC')
-        balance['XRB'] = self.parseBalance(self._balances_xrb,'XRB')
-        if(balance['BTC']):
+        balance[self._symbol_base] = self.parseBalance(self._balance_cached,self._symbol_base)
+        balance[self._symbol] = self.parseBalance(self._balance_cached,self._symbol)
+        if(balance[self._symbol_base]):
             return balance
         return False
 
@@ -191,15 +198,15 @@ class Bitgrail_mimic():
             f.write(sdata)
         return self._session_
 
-    def checkPageForString(self,url,str):
+    def checkPageForString(self,url,s):
         resp = self._session_.get(url)
-        if(resp.text.find(str)):
+        if(resp.text.find(s) >= 0):
             return True
         return False
 
     def checkWithdrawals(self,coin):
         self.ensure_working_session()
-        s = coin.upper()+' withdraw under maintenance'
+        s = 'withdraw under maintenance'
         result = self.checkPageForString('https://bitgrail.com/withdraw/'+coin.upper(),s)
         return not result
 

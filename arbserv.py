@@ -194,7 +194,7 @@ def getGraph(n,checkBoxes,relayout_data):
                     width=2,
                 )
             ),
-            opacity=0.6,
+            opacity=0.4,
         )
 
         df_filtered = df.query('traded<0')
@@ -203,7 +203,6 @@ def getGraph(n,checkBoxes,relayout_data):
             y = df_filtered['traded']*-1,
             yaxis = 'y2',
             name = 'bought on KuCoin',
-            # color = ('rgb(255, 145, 0)'),
             marker=dict(
                 color='rgb(158,202,225)',
                 line=dict(
@@ -211,7 +210,7 @@ def getGraph(n,checkBoxes,relayout_data):
                     width=2,
                 )
             ),
-            opacity=0.6,
+            opacity=0.4,
         )
         layout['yaxis2'] = {'title': '# of '+symbol_name+' bought & sold ('+symbol+')', 'side':'right', 'overlaying':'y'}
         data = [trace['BG_sell'], trace['BG_buy'], trace['KC_sell'], trace['KC_buy'],trace['bought'],trace['sold']]
