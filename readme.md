@@ -15,15 +15,12 @@ Secondary goal:
  - Another that buys a lot will get a shortage of BTC. It decrements a counter.
  - When an exchange is below the threshold and there is enough supply on another, suggest the transfer of BTC. The threshold needs to be high enough to minimize withdrawal fees.
 
-Development
-===========
+Dependencies
+============
 
-Steps:
- 1. Get APIs and code to get order book data for one exchange.
- 2. Get it for the second exchange.
- 3. Analyse when an arb opportunity arises and suggest what to do manually.
- 4. Instead of analyzing once, make it continue to scrape until ArbOpp arises.
- 5. Allow the trade to actually happen.
+Server:
+ - `pip install pandas`
+ 
 
 Notes
 =====

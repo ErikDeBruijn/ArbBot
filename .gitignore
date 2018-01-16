@@ -1,0 +1,8 @@
+
+.DS_Store
+*.pyc
+.settings.ini
+bg_session.dump
+arbfinder.csv
+tmp/*
+tmp

@@ -1,6 +1,12 @@
 [general]
 trading_enabled = True
 coin = xrb
+notify_via = Telegram
+starting_balance_btc = 0
+
+[Telegram]
+telegram_bot_id = None
+telegram_chat_id = None
 
 [BitGrail]
 buy_at_min_perc_profit = 4
