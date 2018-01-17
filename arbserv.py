@@ -9,6 +9,8 @@ import plotly.graph_objs as go
 import plotly.plotly as py
 import plotly.figure_factory as ff
 
+from modules.CoinData import CoinData
+
 import datetime, time
 
 import pandas as pd
@@ -33,7 +35,7 @@ def conf(topicDotKey,type='string'):
 app = dash.Dash()
 
 symbol = Config.get("general",'symbol').upper()
-symbol_name = Config.get("general",'symbol_name').lower()
+symbol_name = getCoinNameFromSymbol(symbol)
 symbol_base = Config.get("general",'symbol_base').upper()
 
 logFilePrefix = Config.get("general",'logFilePrefix')
@@ -81,7 +83,7 @@ app.layout = html.Div(children=[
     html.Div(children=[
         intervalObject,
         html.Link(rel="shortcut icon", href="favicon.ico"), #, type="image/x-icon"
-        html.Img(src='/static/'+symbol_name+'.png'),
+        html.Img(src='/static/'+symbol_name.lower()+'.png'),
         checkList,
         html.Div(id='lastUpdate')]),    
         dcc.Graph(id='prices-graph',config={'scrollZoom': True})
@@ -253,8 +255,8 @@ ADDRESS = '0.0.0.0'
 
 @app.server.route('/favicon.ico')
 def favicon():
-    print "flask.send_from_directory(image_directory="+image_directory+", image_name="+symbol_name+'.png'+")"
-    return flask.send_from_directory(image_directory,symbol_name+'.png')
+    print "flask.send_from_directory(image_directory="+image_directory+", image_name="+symbol_name.lower()+'.png'+")"
+    return flask.send_from_directory(image_directory,symbol_name.lower()+'.png')
 
 @app.server.route('{}<image_path>.png'.format(static_image_route))
 def serve_image(image_path):

@@ -1,26 +1,59 @@
 [general]
-trading_enabled = True
-coin = xrb
+instance_name = CHANGE_ME
+trading_enabled = False
+symbol = ETH
+symbol_base = BTC
 notify_via = Telegram
 starting_balance_btc = 0
+logFilePrefix = log
+
+# Once the balance of the coin to sell goes under this cap, start hoarding coins proportionally to this shortage
+balance_cap = 2
+
+# In order to prevent tiny trades from spamming you, this is a lower limit to placing orders at all
+min_trade_size = 0.01
+
+[webserver]
+webServerPort = 8050
+skipFirstNum = 1
 
 [Telegram]
-telegram_bot_id = None
-telegram_chat_id = None
+telegram_bot_id = 
+telegram_chat_id = 
 
 [BitGrail]
-buy_at_min_perc_profit = 4
+buy_at_min_perc_profit = 0.5
+
 disable_buy = True
 disable_sell = True
 
-ApiKey = None
-Secret = None
+ApiKey = 
+Secret = 
+
+# For non-api based automation:
+recapcha_sitekey = 
+email = 
+password = 
+
+checkWithdrawals = False
 
 [KuCoin]
-buy_at_min_perc_profit = 3
+buy_at_min_perc_profit = 0.5
+
 disable_buy = True
 disable_sell = True
 
-ApiKey = None
-Secret = None
+ApiKey = 
+Secret = 
 
+[Binance]
+buy_at_min_perc_profit = 5
+
+disable_buy = True
+disable_sell = True
+
+ApiKey = 
+Secret = 
+
+[2captcha]
+2CAPCHA_API_KEY = 
