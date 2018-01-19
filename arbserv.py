@@ -9,7 +9,7 @@ import plotly.graph_objs as go
 import plotly.plotly as py
 import plotly.figure_factory as ff
 
-from modules.CoinData import CoinData
+import modules.CoinData as CoinData
 
 import datetime, time
 
@@ -35,7 +35,7 @@ def conf(topicDotKey,type='string'):
 app = dash.Dash()
 
 symbol = Config.get("general",'symbol').upper()
-symbol_name = getCoinNameFromSymbol(symbol)
+symbol_name = CoinData.getCoinNameFromSymbol(symbol)
 symbol_base = Config.get("general",'symbol_base').upper()
 
 logFilePrefix = Config.get("general",'logFilePrefix')
@@ -72,8 +72,9 @@ intervalObject = dcc.Interval(id='interval-component', interval=20*1000)
 checkList = dcc.Checklist(
     id = 'checklist',
     options=[
-        {'label': 'Display Trades', 'value': 'trades'},
-        {'label': 'Remember View', 'value': 'lockView'}
+        {'label': 'Display trades', 'value': 'trades'},
+        {'label': 'Display potential profit', 'value': 'profit'},
+        {'label': 'Keep viewport on refresh', 'value': 'lockView'}
     ],
     values=['trades','lockView'],
     labelStyle={'display': 'inline-block'}
@@ -83,7 +84,7 @@ app.layout = html.Div(children=[
     html.Div(children=[
         intervalObject,
         html.Link(rel="shortcut icon", href="favicon.ico"), #, type="image/x-icon"
-        html.Img(src='/static/'+symbol_name.lower()+'.png'),
+        html.A(children=html.Img(src='/static/'+symbol_name.lower()+'.png'),href=CoinData.getCoinLink(symbol),target='_blank',title='Click for '+symbol_name+' on CoinMarketCap'),
         checkList,
         html.Div(id='lastUpdate')]),    
         dcc.Graph(id='prices-graph',config={'scrollZoom': True})
@@ -150,6 +151,8 @@ def getGraph(n,checkBoxes,relayout_data):
             width = 1)
     )
 
+    data = [trace['BG_sell'], trace['BG_buy'], trace['KC_sell'], trace['KC_buy']]
+
     # Edit the layout
     layout = dict(title = 'Prices for ' + symbol + '-' + symbol_base + ' on two exchanges [' +Config.get("general",'instance_name')+']',
                   xaxis = dict(
@@ -215,9 +218,44 @@ def getGraph(n,checkBoxes,relayout_data):
             opacity=0.4,
         )
         layout['yaxis2'] = {'title': '# of '+symbol_name+' bought & sold ('+symbol+')', 'side':'right', 'overlaying':'y'}
-        data = [trace['BG_sell'], trace['BG_buy'], trace['KC_sell'], trace['KC_buy'],trace['bought'],trace['sold']]
-    else:
-        data = [trace['BG_sell'], trace['BG_buy'], trace['KC_sell'], trace['KC_buy']]
+        data += [trace['bought'],trace['sold']]
+
+    if('profit' in checkBoxes):
+        df_filtered = df.query('kcoin_buy - bitgrail_sell > 0 | bitgrail_buy - kcoin_sell > 0')
+        buy_ex1 = 100*(df_filtered.bitgrail_buy - df_filtered.kcoin_sell) / df_filtered.kcoin_sell
+        trace['profit'] = go.Bar(
+            x = df_filtered['time'],
+            y = buy_ex1.clip(200,0),
+            yaxis = 'y3',
+            name = 'profit (BG>KC)',
+            marker=dict(
+                color='rgb(128,128,128)',
+                line=dict(
+                    color='rgb(128, 128, 255)',
+                    width=2,
+                )
+            ),
+            opacity=0.4,
+        )
+        data += [trace['profit']] # combine the two lists
+        buy_ex2 = 100*(df_filtered.kcoin_buy - df_filtered.bitgrail_sell) / df_filtered.bitgrail_sell
+        trace['profit2'] = go.Bar(
+            x = df_filtered['time'],
+            y = buy_ex2.clip(200,0),
+            yaxis = 'y3',
+            name = 'profit (KC>BG)',
+            marker=dict(
+                color='rgb(128,128,128)',
+                line=dict(
+                    color='rgb(128, 255, 128)',
+                    width=2,
+                )
+            ),
+            opacity=0.4,
+        )
+        data += [trace['profit2']] # combine the two lists
+
+        layout['yaxis3'] = {'title': 'Price spread (%)', 'side':'right', 'overlaying':'y', 'position':0.85}
 
     if relayout_data and ('lockView' in checkBoxes):
         if 'xaxis.range[0]' in relayout_data:
@@ -234,6 +272,11 @@ def getGraph(n,checkBoxes,relayout_data):
             layout['yaxis2']['range'] = [
                 relayout_data['yaxis2.range[0]'],
                 relayout_data['yaxis2.range[1]']
+            ]
+        if 'yaxis3.range[0]' in relayout_data and 'yaxis3' in layout:
+            layout['yaxis3']['range'] = [
+                relayout_data['yaxis3.range[0]'],
+                relayout_data['yaxis3.range[1]']
             ]
 
     layout['annotations'] = [
