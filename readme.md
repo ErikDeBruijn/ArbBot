@@ -19,8 +19,16 @@ Dependencies
 ============
 
 Server:
+ - As root: `apt-get install python-dev libxml2-dev libxslt1-dev zlib1g-dev`
+ - As the user or as root:
  - `pip install pandas`
- 
+ - `pip install lxml`
+ - `pip install `
+
+Installation
+============
+
+
 
 Notes
 =====

@@ -102,12 +102,23 @@ class Bitgrail_mimic():
     def getBalance(self,selfTest=False):
         if(not selfTest): self.ensure_working_session()
         # FIXME: some balance can be reserved, better to use /wallets for info!
+        if(selfTest):
+            t_symbol = self._symbol
+            t_symbol_base = self._symbol_base
+            t_market = self._market
+            self._symbol = 'XRB'
+            self._symbol_base = 'BTC'
+            self._market = 'BTC-XRB'
         if(not self._balance_cached):
             resp = self._session_.get("https://bitgrail.com/market/"+self._market)
             self._balance_cached = resp.text
         balance = {}
         balance[self._symbol_base] = self.parseBalance(self._balance_cached,self._symbol_base)
         balance[self._symbol] = self.parseBalance(self._balance_cached,self._symbol)
+        if(selfTest):
+            self._symbol = t_symbol
+            self._symbol_base = t_symbol_base
+            self._market = t_market
         if(balance[self._symbol_base]):
             return balance
         return False
@@ -175,8 +186,9 @@ class Bitgrail_mimic():
 
         if(not resp.text.find('icon-ok-circled')):
             print "BitGrail: printing full dump or response"
-            data = dump.dump_response(resp)
-            print(data.decode('utf-8'))
+            # data = dump.dump_response(resp)
+            # print(data.decode('utf-8'))
+            print resp.text
             quit("No valid response from login.")
 
         submit_url = "https://bitgrail.com/login2fa"
@@ -189,8 +201,9 @@ class Bitgrail_mimic():
 
         if(not resp.text.find('icon-ok-circled')):
             print "BitGrail: printing full dump or response"
-            data = dump.dump_response(resp)
-            print(data.decode('utf-8'))
+            # data = dump.dump_response(resp)
+            # print(data.decode('utf-8'))
+            print resp.text
             quit("No valid response from login.")
 
         sdata = self.store_session()
@@ -214,6 +227,8 @@ class Bitgrail_mimic():
 
 def main():
     bgm = Bitgrail_mimic()
+    # bgm.set_coin('XRB','BTC')
+    bgm.set_coin('XRB','ETH')
 
     if(bgm.checkWithdrawals('xrb')):
         print "Withdrawals are open."

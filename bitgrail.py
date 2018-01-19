@@ -3,7 +3,7 @@
 import json
 import requests
 # temporarily?
-from requests_toolbelt.utils import dump
+# from requests_toolbelt.utils import dump
 # requires: pip install requests_toolbelt
 
 import pprint
@@ -112,12 +112,12 @@ class Bitgrail():
         with requests.Session() as session:
             r = session.send(prepped)
             print "BitGrail: printing full dump or response"
-            data = dump.dump_response(r)
-            print(data.decode('utf-8'))
+            # data = dump.dump_response(r)
+            # print(data.decode('utf-8'))
             print "BitGrail: printing errorcode"
             print(r)
             # print "BitGrail: Printing object (if any)"
-            # print(r.text)
+            print(r.text)
 
         return r
 
