@@ -3,52 +3,22 @@
 
 import bitgrail
 import bitgrail_mimic
-import ConfigParser
+# import ConfigParser
 from ConfigParser import SafeConfigParser
 from kucoin.client import Client # as kucoin_client
-import pprint
 from arbanalysis import ArbAnalysis
-import csv
-import datetime
-from modules.Telegram import Telegram
-import socket
+
+from modules.Utils import *
+import modules.CoinData as CoinData
 
 
-Config = ConfigParser.ConfigParser()
-Config.read("./.settings.ini")
 
-def conf(topicDotKey,type='string'):
-	(topic,k) = topicDotKey.split('.')
-	if(type in ('boolean','bool')):
-		return Config.get(topic,k).lower() in ("yes", "true", "t", "1")
-	if(type in ('float')):
-		return float(Config.get(topic,k))
-	return Config.get(topic,k)
 
-dt = datetime.datetime.now().isoformat()
 
-pp = pprint.PrettyPrinter(indent=4)
-
-min_perc_profit = {'KC': conf('KuCoin.buy_at_min_perc_profit','float'), 'BG': conf('BitGrail.buy_at_min_perc_profit','float')}
-
-T_BOT_ID = conf('Telegram.telegram_bot_id')
-T_CHAT_ID = conf('Telegram.telegram_chat_id')
-telegramBot = Telegram(T_BOT_ID)
-telegramBot.set_chat_id(T_CHAT_ID)
-
-symbol = conf('general.symbol').upper()
-symbol_base = conf('general.symbol_base').upper()
 
 BTCEUR = 11328
 
 
-def getIp():
-    return str([l for l in ([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] 
-if not ip.startswith("127.")][:1], [[(s.connect(('8.8.8.8', 53)), 
-s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, 
-socket.SOCK_DGRAM)]][0][1]]) if l][0][0])
-
-graphURL = "http://"+ getIp() + ":"+conf('webserver.webServerPort')+"/"
 
 def compareCheapness(ex1,ex2):
 	ex1_name, ex1_sell, ex1_buy = ex1
@@ -74,7 +44,7 @@ def main():
 	bgm = bitgrail_mimic.Bitgrail_mimic()
 	bgm.set_coin(symbol=symbol,symbol_base=symbol_base)
 
-	if(conf('BitGrail.checkWithdrawals')):
+	if(conf('BitGrail.checkWithdrawals','bool')):
 		if(bgm.checkWithdrawals(symbol)):
 			print "BitGrail "+symbol+" withdrawals are open."
 			telegramBot.text_message(symbol+" withdrawals just opened up on BitGrail!",topic="Mon.BG."+symbol+"_Withdrawals")
@@ -82,31 +52,28 @@ def main():
 			print "BitGrail "+symbol+" withdrawals under maintenance."
 			telegramBot.text_message(symbol+" withdrawals just became deactivated again! (under maintenance)",topic="Mon.BG."+symbol+"_Withdrawals")
 	bg_balance = bgm.getBalance()
-	# bg.setAuth(BitGrail_ApiKey,BitGrail_Secret)
 	ticker = bg.get("ticker",symbol_base+'-'+symbol)
 	tBG = {'sell': float(ticker['ask']), 'buy': float(ticker['bid'])}
 
 	print("========== Prices ==========")
 	spread = 100 * round((tBG['sell'] - tBG['buy'])/tBG['buy'],2)
-	print("BitGrail  sell: "+str(tBG['sell'])+"")
-	print("BitGrail   buy: "+str(tBG['buy'])+" (spread: "+str(spread)+"%)")
+	print("BitGrail  sell: "+str(tBG['sell']).ljust(10)+"")
+	print("BitGrail   buy: "+str(tBG['buy']).ljust(10)+" (spread: "+str(spread)+"%)")
 
 	ticker = kc_client.get_tick(symbol+'-'+symbol_base)
-	# pp.pprint(ticker)
 	tKC = {}
 	tKC['sell'] = float(ticker['sell'])
 	tKC['buy'] = float(ticker['buy'])
 	spread = 100 * round((tKC['sell'] - tKC['buy'])/tKC['buy'],2)
-	print("KuCoin     buy: "+str(tKC['buy'])+" ")
-	print("KuCoin    sell: "+str(tKC['sell'])+" (spread: "+str(spread)+"%)")
-	print("\n========== Balances ==========")
+	print("KuCoin     buy: "+str(tKC['buy']).ljust(10)+" ")
+	print("KuCoin    sell: "+str(tKC['sell']).ljust(10)+" (spread: "+str(spread)+"%)")
 
-	# Balances
+	print("\n========== Balances ==========")
 	balanceStr = ''
 	if(symbol in bg_balance):
 		coinValueBaseCurrency = bg_balance[symbol] * float(ticker['lastDealPrice'])
 		total_in_BaseCurrency = coinValueBaseCurrency+bg_balance[symbol_base]
-		balanceStr = "BitGrail: "+str(round(bg_balance[symbol_base],5))+" "+symbol_base+" + "+str(round(bg_balance[symbol],5))+" "+symbol+" = "+str(round(total_in_BaseCurrency,5))+" "+symbol_base+"\n"
+		balanceStr =              "BitGrail:    "+str(round(bg_balance[symbol_base],5)).ljust(8)+" "+symbol_base+" + "+str(round(bg_balance[symbol],5)).ljust(8)+" "+symbol+" = "+str(round(total_in_BaseCurrency,5)).ljust(8)+" "+symbol_base+"\n"
 	balances = kc_client.get_all_balances()
 	kc_balance = {}
 	for balance in balances:
@@ -118,12 +85,12 @@ def main():
 	if(symbol in kc_balance):
 		coinValueBaseCurrency2 = kc_balance[symbol] * float(ticker['lastDealPrice'])
 		total_in_BaseCurrency2 = coinValueBaseCurrency2+kc_balance[symbol_base]
-		balanceStr = balanceStr + "KuCoin: "+str(round(kc_balance[symbol_base],5))+" "+symbol_base+" + "+str(round(kc_balance[symbol],5))+" "+symbol+" = "+str(round(total_in_BaseCurrency2,5))+" "+symbol_base+"\n"
-	balanceStr = balanceStr + "Grand total: "+str(round(bg_balance[symbol_base]+kc_balance[symbol_base],5))+" "+symbol_base+" + "+str(round(bg_balance[symbol]+kc_balance[symbol],5))+" "+symbol+" = "+str(round(total_in_BaseCurrency+total_in_BaseCurrency2,5))+" "+symbol_base+"\n"
+		balanceStr = balanceStr + "KuCoin:      "+str(round(kc_balance[symbol_base],5)).ljust(8)+" "+symbol_base+" + "+str(round(kc_balance[symbol],5)).ljust(8)+" "+symbol+" = "+str(round(total_in_BaseCurrency2,5)).ljust(8)+" "+symbol_base+"\n"
+	balanceStr = balanceStr +     "Grand total: "+str(round(bg_balance[symbol_base]+kc_balance[symbol_base],5)).ljust(8)+" "+symbol_base+" + "+str(round(bg_balance[symbol]+kc_balance[symbol],5)).ljust(8)+" "+symbol+" = "+str(round(total_in_BaseCurrency+total_in_BaseCurrency2,5)).ljust(8)+" "+symbol_base+"\n"
 
 	btc_gains = bg_balance[symbol_base]+kc_balance[symbol_base]
 	btc_gains-= conf('general.starting_balance_btc','float')
-	balanceStr = balanceStr + symbol_base+" gains: "+str(round(btc_gains,5))+" "+symbol_base+" (about € "+str(round(btc_gains*BTCEUR,2))+")\n"
+	balanceStr = str(balanceStr + symbol_base+" gains: ").ljust(14)+str(round(btc_gains,5)).ljust(8)+" "+symbol_base+" (about € "+str(round(btc_gains*BTCEUR,2))+")\n"
 	print balanceStr
 
 	print("\n========== Trade ==========")
@@ -142,7 +109,6 @@ def main():
 		print("On KuCoin you can buy "+symbol+" for € "+str(tKC['sell']*BTCEUR)+" which sells for €"+str(tBG['buy']*BTCEUR)+" on BitGrail ("+str(round(profit1,2))+"% profit).")
 
 		maxNow = tradeCap(margin,maxNow,availableForSale = bg_balance[symbol])
-		print (maxNow,conf('general.min_trade_size','float'))
 		if(maxNow > conf('general.min_trade_size','float')) and conf('general.trading_enabled','bool'):
 			maxLeftTotal = getTradeLeftTotal(symbol)
 			print("Most I can trade now is: "+str(maxNow)+" "+symbol+" of "+str(maxLeftTotal)+" total.")
@@ -155,11 +121,11 @@ def main():
 			# Update limits (whatever happens next)
 			updateLimits(symbol,maxNow)
 			# Get buy price on market A (KC)
-			buyAt = tKC['sell']*1.02 # asking price to get it at instantly
+			buyAt = tKC['sell']*1.01 # asking price to get it at instantly
 
 			# TODO: check order book if enough is actually available at that price!
 			# Get selling price on market B (BG)
-			sellAt = tBG['buy']*0.98 # price people already want to buy it at
+			sellAt = tBG['buy']*0.99 # price people already want to buy it at
 			# Place order on market A (KC)
 			if(buyAt > sellAt):
 				s = "I'm paying more on BitGrail than I'm getting from the sale on KuCoin (buyAt: "+str(buyAt)+", sellAt: "+str(sellAt)+")!"
@@ -227,12 +193,12 @@ def main():
 			# Update limits (whatever happens next)
 			updateLimits(symbol,maxNow)
 			# Get buy price on market A (BG)
-			buyAt = tBG['sell']*1.03 # asking price to get it at instantly
+			buyAt = tBG['sell']*1.005 # asking price to get it at instantly
 			# TODO: check order book if enough is actually available at that price!
 			# Get selling price on market B (KC)
-			sellAt = tKC['buy']*0.97 # price people already want to buy it at
+			sellAt = tKC['buy']*0.995 # price people already want to buy it at
 			# Place buy order on market A (BG)
-			if(buyAt > sellAt):
+			if(tBG['sell'] > tKC['buy']):
 				s = "would potentially have paid more to buy that I'd get to sell. Not doing anything!"
 				print(s)
 				telegramBot.text_message(s)
@@ -242,9 +208,9 @@ def main():
 				s = "BitGrail: creating buy order of "+str(maxNow)+" "+symbol+" at "+str(buyAt)+"."
 				print(s)
 				bg_balance = bgm.getBalance()
-				if(bg_balance[symbol] < maxNow * buyAt):
+				if(bg_balance[symbol_base] < maxNow * buyAt):
 					s = s + "Not enough coins.\n"
-					print "Crap. I ran out of "+symbol_base+" on the exchange... Want to buy: "+str(maxNow)+" but I have a balance of "+str(bg_balance[symbol_base])+" on BitGrail."
+					print "Crap. I ran out of "+symbol_base+" on the exchange... Want to buy: "+str(maxNow)+" for "+str(maxNow * buyAt)+" BTC but I have a balance of "+str(bg_balance[symbol_base])+" "+symbol_base+" on BitGrail."
 					print("\nI N S E R T   C O I N\n")
 					quit("I'll stop purchasing now.")
 				result = bgm.createOrder(symbol_base+'-'+symbol,'buy',maxNow,buyAt)
@@ -284,16 +250,19 @@ def tradeCap(margin,maxNow,availableForSale=None):
 		print("Capped order because balance is low: "+str(availableForSale)+" coins. Margin before: "+str(margin))
 		margin = margin * (availableForSale / float(Config.get('general','balance_cap')))
 		print("Margin after: "+str(margin))
-	if(margin <= 1):
-		maxNow = min(0+round(margin*4),maxNow)
+	if(margin <= 3.0):
+		# FIXME: Doesn't work for currencies that are more expensive than XRB
+		# For ETH margin*4 basically means, any bit of margin and it sells the limit
+		# maxNow = min(0+round(margin*4),maxNow)
+		# Trying this instead:
+		maxNow = min(round(margin/3.0*maxNow),maxNow)
 		print("Capped order to "+str(maxNow)+" (profit margin only "+str(round(margin,2))+"% above minimum)")
-		return maxNow
+	# Cap quantity to available balance
+	if(maxNow > availableForSale):
+		print('Not selling more that available. You have: '+str(availableForSale)+' '+symbol+'. So capping to that.')
+		maxNow = min(maxNow,availableForSale)
 	return maxNow
 
-def logCSV(vars):
-	with open(conf('general.logFilePrefix')+'_'+symbol+'-'+symbol_base+'.csv','a') as f:
-		writer = csv.writer(f, delimiter='\t')
-		writer.writerow(vars)
 
 def getTradeMaxNow(symbol):
 	TradeLimits = ConfigParser.ConfigParser()
