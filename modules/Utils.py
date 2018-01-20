@@ -7,7 +7,7 @@ import pprint
 import csv
 import datetime
 import CoinData
-import Telegram
+from Telegram import Telegram
 # from modules.Telegram import Telegram
 
 
