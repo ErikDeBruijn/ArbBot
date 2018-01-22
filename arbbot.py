@@ -80,12 +80,12 @@ def main():
 	setConfig(symbol,'KC_last_balance_base',kc_balance[symbol_base])
 	setConfig(symbol,'BG_last_balance_base',bg_balance[symbol_base])
 	if(float(getConfig(symbol,'KC_last_balance')) != kc_balance[symbol]):
-		ch_s = "KuCoin balance changed from "+getConfig(symbol,'KC_last_balance')+" to "+str(kc_balance[symbol])+" "+symbol
+		ch_s = "===== BALANCE CHANGE =====\nKuCoin balance changed from "+getConfig(symbol,'KC_last_balance')+" to "+str(kc_balance[symbol])+" "+symbol + "\n" + balanceStr
 		setConfig(symbol,'KC_last_balance',kc_balance[symbol])
 		telegramBot.text_message(ch_s)
 		print(ch_s + "\n")
 	if(float(getConfig(symbol,'BG_last_balance')) != bg_balance[symbol]):
-		ch_s = "BitGrail balance changed from "+getConfig(symbol,'BG_last_balance')+" to "+str(bg_balance[symbol])+" "+symbol
+		ch_s = "===== BALANCE CHANGE =====\nBitGrail balance changed from "+getConfig(symbol,'BG_last_balance')+" to "+str(bg_balance[symbol])+" "+symbol  + "\n" + balanceStr
 		setConfig(symbol,'BG_last_balance',bg_balance[symbol])
 		telegramBot.text_message(ch_s)
 		print(ch_s + "\n")
