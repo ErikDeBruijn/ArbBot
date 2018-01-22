@@ -38,6 +38,7 @@ def compareCheapness(ex1,ex2):
 
 def main():
 	print("========== ArbBot - "+ symbol + '-' + symbol_base + ' [' + conf('general.instance_name') +"] ========== "+str(dt))
+	actions = checkTelegramMessages(symbol)
 	maxNow = getTradeMaxNow(symbol)
 
 	bg = bitgrail.Bitgrail(conf('BitGrail.ApiKey'),conf('BitGrail.Secret'))
@@ -96,6 +97,11 @@ def main():
 	spread = 100 * round((tKC['sell'] - tKC['buy'])/tKC['buy'],2)
 	ps += "KuCoin     buy: "+str(tKC['buy']).ljust(10)+" \n"
 	ps += "KuCoin    sell: "+str(tKC['sell']).ljust(10)+" (spread: "+str(spread)+"%)"
+	print(ps)
+	if('sendBalance' in actions):
+		telegramBot.text_message(balanceStr + "\n" + ps)
+
+
 	print("\n========== Trade ==========")
 	# cheapness_punchline, cheapness_details = compareCheapness(('BitGrail',tBG['sell'],tBG['buy']),('KuCoin',tKC['sell'],tKC['buy']))
 	# telegramBot.text_message(cheapness_punchline,topic="Mon.Cheapness",msg_full=cheapness_details)

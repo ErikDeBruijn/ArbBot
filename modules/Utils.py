@@ -10,6 +10,13 @@ import datetime
 import CoinData
 from Telegram import Telegram
 # from modules.Telegram import Telegram
+import time
+import telegram # the wrapper you can't refuse
+
+
+
+
+
 def setConfig(heading,k,val):
 	parser = SafeConfigParser()
 	parser.read('./trade_allowed.ini')
@@ -44,6 +51,51 @@ def logCSV(vars):
 		writer = csv.writer(f, delimiter='\t')
 		writer.writerow(vars)
 
+def checkTelegramMessages(coin):
+	actions = {}
+	last_update_id = int(getConfig('telegram','last_update_id'))
+	updates = bot.getUpdates(timeout=1, offset=(last_update_id + 1))
+	for update in updates:
+		if(update.message.text.find('/abort') == 0):
+			print "Aborting!"
+			abortReason = "/abort " + update.message.text[7:]
+			if(len(abortReason)<=0):
+				abortReason = "/abort via Telegram"
+			updateLimits(symbol,0,abortReason=abortReason)
+			telegramBot.text_message("Aborted. Use /resume to resume")
+			print update.message.text
+		elif(update.message.text.find('/resume') == 0):
+			setConfig(coin,'self_abort',False)
+			telegramBot.text_message("Okay, will resuming trading.")
+		elif(update.message.text.find('/balance') == 0):
+			print "Balance requested via Telegram!"
+			actions['sendBalance'] = True
+		elif(update.message.text.find('/sleep') == 0):
+			sleepTime = float(update.message.text[7:])
+			print "Sleeping %d s" % sleepTime
+			time.sleep(sleepTime)
+			print "Woke up again..."
+		else:
+			print("Received unhandled message: %s" % update.message.text)
+		setConfig('telegram','last_update_id',update.update_id)
+	return actions
+
+def updateLimits(symbol,decreaseLimits,abortReason=None):
+	parser = SafeConfigParser()
+	parser.read('./trade_allowed.ini')
+	ml = float(parser.get(symbol, 'max_qty_left'))
+	if(ml < 0):
+		print("Somethings VERY WRONG. max_qty_left shouldn't be negative. Ever.")
+	if((ml-decreaseLimits)<0):
+		print("Somethings VERY WRONG. Exceeded trade limit?!")
+	if(abortReason):
+		parser.set(symbol,'self_abort',abortReason)
+	parser.set(symbol,'max_qty_left',str(ml-decreaseLimits))
+	with open('./trade_allowed.ini', 'wb') as configfile:
+		parser.write(configfile)
+
+
+
 Config = ConfigParser.ConfigParser()
 Config.read("./.settings.ini")
 
@@ -59,5 +111,7 @@ graphURL = "http://"+ getIp() + ":"+conf('webserver.webServerPort')+"/"
 
 telegramBot = Telegram(conf('Telegram.telegram_bot_id'))
 telegramBot.set_chat_id(conf('Telegram.telegram_chat_id'))
+
+bot = telegram.Bot(conf('Telegram.telegram_bot_id'))
 
 min_perc_profit = {'KC': conf('KuCoin.buy_at_min_perc_profit','float'), 'BG': conf('BitGrail.buy_at_min_perc_profit','float')}
