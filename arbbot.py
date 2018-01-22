@@ -53,26 +53,12 @@ def main():
 			print "BitGrail "+symbol+" withdrawals under maintenance."
 			telegramBot.text_message(symbol+" withdrawals just became deactivated again! (under maintenance)",topic="Mon.BG."+symbol+"_Withdrawals")
 	bg_balance = bgm.getBalance()
-	ticker = bg.get("ticker",symbol_base+'-'+symbol)
-	tBG = {'sell': float(ticker['ask']), 'buy': float(ticker['bid'])}
-
-	print("========== Prices ==========")
-	spread = 100 * round((tBG['sell'] - tBG['buy'])/tBG['buy'],2)
-	print("BitGrail  sell: "+str(tBG['sell']).ljust(10)+"")
-	print("BitGrail   buy: "+str(tBG['buy']).ljust(10)+" (spread: "+str(spread)+"%)")
-
-	ticker = kc_client.get_tick(symbol+'-'+symbol_base)
-	tKC = {}
-	tKC['sell'] = float(ticker['sell'])
-	tKC['buy'] = float(ticker['buy'])
-	spread = 100 * round((tKC['sell'] - tKC['buy'])/tKC['buy'],2)
-	print("KuCoin     buy: "+str(tKC['buy']).ljust(10)+" ")
-	print("KuCoin    sell: "+str(tKC['sell']).ljust(10)+" (spread: "+str(spread)+"%)")
 
 	print("\n========== Balances ==========")
 	balanceStr = ''
 	if(symbol in bg_balance):
-		coinValueBaseCurrency = bg_balance[symbol] * float(ticker['lastDealPrice'])
+		lastDealPrice = float(getConfig('cache','lastDealPrice'))
+		coinValueBaseCurrency = bg_balance[symbol] * lastDealPrice
 		total_in_BaseCurrency = coinValueBaseCurrency+bg_balance[symbol_base]
 		balanceStr =              "BitGrail:    "+str(round(bg_balance[symbol_base],5)).ljust(8)+" "+symbol_base+" + "+str(round(bg_balance[symbol],5)).ljust(8)+" "+symbol+" = "+str(round(total_in_BaseCurrency,5)).ljust(8)+" "+symbol_base+"\n"
 	balances = kc_client.get_all_balances()
@@ -84,7 +70,7 @@ def main():
 			if(balance['balance'] == False): balance['balance'] = 0.0
 			kc_balance[symbol] = balance['balance']
 	if(symbol in kc_balance):
-		coinValueBaseCurrency2 = kc_balance[symbol] * float(ticker['lastDealPrice'])
+		coinValueBaseCurrency2 = kc_balance[symbol] * lastDealPrice
 		total_in_BaseCurrency2 = coinValueBaseCurrency2+kc_balance[symbol_base]
 		balanceStr = balanceStr + "KuCoin:      "+str(round(kc_balance[symbol_base],5)).ljust(8)+" "+symbol_base+" + "+str(round(kc_balance[symbol],5)).ljust(8)+" "+symbol+" = "+str(round(total_in_BaseCurrency2,5)).ljust(8)+" "+symbol_base+"\n"
 	balanceStr = balanceStr +     "Grand total: "+str(round(bg_balance[symbol_base]+kc_balance[symbol_base],5)).ljust(8)+" "+symbol_base+" + "+str(round(bg_balance[symbol]+kc_balance[symbol],5)).ljust(8)+" "+symbol+" = "+str(round(total_in_BaseCurrency+total_in_BaseCurrency2,5)).ljust(8)+" "+symbol_base+"\n"
@@ -94,6 +80,22 @@ def main():
 	balanceStr = str(balanceStr + symbol_base+" gains: ").ljust(14)+str(round(btc_gains,5)).ljust(8)+" "+symbol_base+" (about € "+str(round(btc_gains*BTCEUR,2))+")\n"
 	print balanceStr
 
+	ticker = bg.get("ticker",symbol_base+'-'+symbol)
+	tBG = {'sell': float(ticker['ask']), 'buy': float(ticker['bid'])}
+
+	ps  = "========== Prices ==========\n"
+	spread = 100 * round((tBG['sell'] - tBG['buy'])/tBG['buy'],2)
+	ps += "BitGrail  sell: "+str(tBG['sell']).ljust(10)+"\n"
+	ps += "BitGrail   buy: "+str(tBG['buy']).ljust(10)+" (spread: "+str(spread)+"%)\n"
+
+	ticker = kc_client.get_tick(symbol+'-'+symbol_base)
+	setConfig('cache','lastDealPrice',float(((ticker['lastDealPrice']+tBG['sell']+tBG['buy'])/3)))
+	tKC = {}
+	tKC['sell'] = float(ticker['sell'])
+	tKC['buy'] = float(ticker['buy'])
+	spread = 100 * round((tKC['sell'] - tKC['buy'])/tKC['buy'],2)
+	ps += "KuCoin     buy: "+str(tKC['buy']).ljust(10)+" \n"
+	ps += "KuCoin    sell: "+str(tKC['sell']).ljust(10)+" (spread: "+str(spread)+"%)"
 	print("\n========== Trade ==========")
 	# cheapness_punchline, cheapness_details = compareCheapness(('BitGrail',tBG['sell'],tBG['buy']),('KuCoin',tKC['sell'],tKC['buy']))
 	# telegramBot.text_message(cheapness_punchline,topic="Mon.Cheapness",msg_full=cheapness_details)
@@ -277,19 +279,6 @@ def getTradeLeftTotal(symbol):
 		quit("Aborting trading. Reason: " + TradeLimits.get(symbol,'self_abort'))
 	return float(TradeLimits.get(symbol,'max_qty_left'))
 
-def updateLimits(symbol,decreaseLimits,abortReason=None):
-	parser = SafeConfigParser()
-	parser.read('./trade_allowed.ini')
-	ml = float(parser.get(symbol, 'max_qty_left'))
-	if(ml < 0):
-		print("Somethings VERY WRONG. max_qty_left shouldn't be negative. Ever.")
-	if((ml-decreaseLimits)<0):
-		print("Somethings VERY WRONG. Exceeded trade limit?!")
-	if(abortReason):
-		parser.set(symbol,'self_abort',abortReason)
-	parser.set(symbol,'max_qty_left',str(ml-decreaseLimits))
-	with open('./trade_allowed.ini', 'wb') as configfile:
-		parser.write(configfile)
 
 
 if __name__ == "__main__":

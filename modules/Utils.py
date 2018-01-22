@@ -1,6 +1,7 @@
 
 
 import ConfigParser
+from ConfigParser import SafeConfigParser
 import socket
 
 import pprint
@@ -9,6 +10,17 @@ import datetime
 import CoinData
 from Telegram import Telegram
 # from modules.Telegram import Telegram
+def setConfig(heading,k,val):
+	parser = SafeConfigParser()
+	parser.read('./trade_allowed.ini')
+	parser.set(heading,k,str(val))
+	with open('./trade_allowed.ini', 'wb') as configfile:
+		parser.write(configfile)
+
+def getConfig(heading,k):
+	parser = SafeConfigParser()
+	parser.read('./trade_allowed.ini')
+	return parser.get(heading,k)
 
 
 def conf(topicDotKey,type='string'):
