@@ -10,11 +10,6 @@ from arbanalysis import ArbAnalysis
 
 from modules.Utils import *
 import modules.CoinData as CoinData
-
-
-
-
-
 import random
 
 BTCEUR = 11328
@@ -35,6 +30,8 @@ def compareCheapness(ex1,ex2):
 		s2 = ex2_name+" (Sell: "+str(ex2_sell)+") is currently "+p+" cheaper than "+str(ex1_name)+" (Sell: "+str(ex1_sell)+")"
 	print(s2)
 	return s1, s2
+
+
 
 def main():
 	print("========== ArbBot - "+ symbol + '-' + symbol_base + ' [' + conf('general.instance_name') +"] ========== "+str(dt))
@@ -202,10 +199,10 @@ def main():
 			# Update limits (whatever happens next)
 			updateLimits(symbol,maxNow)
 			# Get buy price on market A (BG)
-			buyAt = tBG['sell']*1.005 # asking price to get it at instantly
+			buyAt = tBG['sell']*1.01 # asking price to get it at instantly
 			# TODO: check order book if enough is actually available at that price!
 			# Get selling price on market B (KC)
-			sellAt = tKC['buy']*0.995 # price people already want to buy it at
+			sellAt = tKC['buy']*0.99 # price people already want to buy it at
 			# Place buy order on market A (BG)
 			if(tBG['sell'] > tKC['buy']):
 				s = "would potentially have paid more to buy that I'd get to sell. Not doing anything!"
@@ -259,12 +256,12 @@ def tradeCap(margin,maxNow,availableForSale=None):
 		print("Capped order because balance is low: "+str(availableForSale)+" coins. Margin before: "+str(margin))
 		margin = margin * (availableForSale / float(Config.get('general','balance_cap')))
 		print("Margin after: "+str(margin))
-	if(margin <= 3.0):
+	if(margin <= 2.0):
 		# FIXME: Doesn't work for currencies that are more expensive than XRB
 		# For ETH margin*4 basically means, any bit of margin and it sells the limit
 		# maxNow = min(0+round(margin*4),maxNow)
 		# Trying this instead:
-		maxNow = min(round(margin/3.0*maxNow),maxNow)
+		maxNow = min(round(2*margin/2.0*maxNow),maxNow)
 		print("Capped order to "+str(maxNow)+" (profit margin only "+str(round(margin,2))+"% above minimum)")
 	# Cap quantity to available balance
 	if(maxNow > availableForSale):
