@@ -51,7 +51,7 @@ def logCSV(vars):
 		writer = csv.writer(f, delimiter='\t')
 		writer.writerow(vars)
 
-def checkTelegramMessages(coin):
+def checkTelegramMessages():
 	actions = {}
 	last_update_id = int(getConfig('telegram','last_update_id'))
 	updates = bot.getUpdates(timeout=1, offset=(last_update_id + 1))
@@ -59,13 +59,11 @@ def checkTelegramMessages(coin):
 		if(update.message.text.find('/abort') == 0):
 			print "Aborting!"
 			abortReason = "/abort " + update.message.text[7:]
-			if(len(abortReason)<=0):
-				abortReason = "/abort via Telegram"
 			updateLimits(symbol,0,abortReason=abortReason)
 			telegramBot.text_message("Aborted. Use /resume to resume")
 			print update.message.text
 		elif(update.message.text.find('/resume') == 0):
-			setConfig(coin,'self_abort',False)
+			setConfig(symbol,'self_abort',False)
 			telegramBot.text_message("Okay, will resuming trading.")
 		elif(update.message.text.find('/balance') == 0):
 			print "Balance requested via Telegram!"

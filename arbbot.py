@@ -35,7 +35,7 @@ def compareCheapness(ex1,ex2):
 
 def main():
 	print("========== ArbBot - "+ symbol + '-' + symbol_base + ' [' + conf('general.instance_name') +"] ========== "+str(dt))
-	actions = checkTelegramMessages(symbol)
+	actions = checkTelegramMessages()
 	maxNow = getTradeMaxNow(symbol)
 
 	bg = bitgrail.Bitgrail(conf('BitGrail.ApiKey'),conf('BitGrail.Secret'))
