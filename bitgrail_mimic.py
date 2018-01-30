@@ -92,7 +92,7 @@ class Bitgrail_mimic():
         # Next time the balance is checked, assume it needs updating from server
         self._balance_cached = None
         resp = self._session_.post('https://bitgrail.com/market/'+market,headers=headers, files=payload)
-        print("DEBUG: bitgrail_mimic got: " + resp.text)
+        print("DEBUG: bitgrail_mimic got: " + resp.text.encode("utf-8"))
         if(not resp.text.find('icon-ok-circled')):
             return None
         else:
