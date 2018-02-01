@@ -1,14 +1,17 @@
 [general]
 instance_name = CHANGE_ME
 trading_enabled = False
-symbol = ETH
+coin = xrb
+symbol = XRB
 symbol_base = BTC
+symbol_name = Nano
+
 notify_via = Telegram
 starting_balance_btc = 0
 logFilePrefix = log
 
 # Once the balance of the coin to sell goes under this cap, start hoarding coins proportionally to this shortage
-balance_cap = 2
+balance_cap = 800
 
 # In order to prevent tiny trades from spamming you, this is a lower limit to placing orders at all
 min_trade_size = 0.01
@@ -39,15 +42,6 @@ checkWithdrawals = False
 
 [KuCoin]
 buy_at_min_perc_profit = 0.5
-
-disable_buy = True
-disable_sell = True
-
-ApiKey = 
-Secret = 
-
-[Binance]
-buy_at_min_perc_profit = 5
 
 disable_buy = True
 disable_sell = True

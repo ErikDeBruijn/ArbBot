@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import bitgrail
 import ConfigParser
 import pprint
@@ -227,8 +229,7 @@ class Bitgrail_mimic():
 
 def main():
     bgm = Bitgrail_mimic()
-    # bgm.set_coin('XRB','BTC')
-    bgm.set_coin('XRB','ETH')
+    bgm.set_coin('XRB','BTC')
 
     if(bgm.checkWithdrawals('xrb')):
         print "Withdrawals are open."

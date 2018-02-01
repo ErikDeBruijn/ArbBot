@@ -255,7 +255,7 @@ def getGraph(n,checkBoxes,relayout_data):
         )
         data += [trace['profit2']] # combine the two lists
 
-        layout['yaxis3'] = {'title': 'Price spread (%)', 'side':'right', 'overlaying':'y', 'position':0.85}
+        layout['yaxis3'] = {'title': 'Price spread (%)', 'side':'right', 'overlaying':'y', 'position':0.95}
 
     if relayout_data and ('lockView' in checkBoxes):
         if 'xaxis.range[0]' in relayout_data:

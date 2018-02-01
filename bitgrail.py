@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import json
 import requests
@@ -25,7 +26,8 @@ NONCE_COUNTER = count(int(time.time() * 1000))
 class Bitgrail():
 
     def __init__(self,aKey = '',aSecret = ''):
-        self._url_ = "https://bitgrail.com/api/v1/"
+        # self._url_ = "https://bitgrail.com/api/v1/"
+        self._url_ = "https://api.bitgrail.com/v1/"
         self._payload_ = {'nonce': ''}
         self._key = aKey
         self._secret = aSecret
@@ -60,7 +62,11 @@ class Bitgrail():
 
         # perform get request and parse output
         r = requests.get(self._url_ + endpoint)
-        json_data = json.loads(r.text)
+        try:
+            json_data = json.loads(r.text)
+        except:
+            print ("bg.get(%s,%s)" % (endpoint, pair))
+            print r.text.encode("utf-8")
 
         # Check for successful message
         if not json_data["success"]:
