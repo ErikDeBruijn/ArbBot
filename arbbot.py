@@ -43,7 +43,7 @@ def main():
 	bgm = bitgrail_mimic.Bitgrail_mimic()
 	bgm.set_coin(symbol=symbol,symbol_base=symbol_base)
 
-	if(conf('BitGrail.checkWithdrawals','bool')) and (random.randrange(10) > 7):
+	if(conf('BitGrail.checkWithdrawals','bool')) and (random.randrange(10) > 5):
 		if(bgm.checkWithdrawals(symbol)):
 			print "BitGrail "+symbol+" withdrawals are open."
 			telegramBot.text_message(symbol+" withdrawals just opened up on BitGrail!",topic="Mon.BG."+symbol+"_Withdrawals")
