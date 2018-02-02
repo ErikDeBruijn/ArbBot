@@ -77,6 +77,14 @@ def main():
 	btc_gains-= conf('general.starting_balance_btc','float')
 	coin_gains = bg_balance[symbol]+kc_balance[symbol]
 	coin_gains-= float(getConfig(symbol,'starting_balance'))
+	drift_max = 1.5 * float(getConfig(symbol,'max_per_trade'))
+	if(abs(coin_gains) > drift_max):
+		msg = "The amount of coins has drifted by "+str(coin_gains)+" "+symbol
+		msg += ". This is more than the allowed "+str(drift_max)+" "+symbol+". "
+		telegramBot.text_message(msg,topic = "coin_drift")
+		updateLimits(symbol,0,abortReason="CoinDriftedBy"+str(coin_gains)+symbol)
+	else:
+		telegramBot.text_message("Coin drift acceptable again.",topic = "coin_drift")
 	balanceStr = str(balanceStr + symbol_base+" gains: ").ljust(14)+str(round(btc_gains,5)).ljust(8)+" "+symbol_base+" (about € "+str(round(btc_gains*BTCEUR,2))+") + "+str(round(coin_gains,4))+" "+symbol+"\n"
 	print balanceStr
 
