@@ -65,10 +65,14 @@ def checkTelegramMessages():
 		elif(update.message.text.find('/resume') == 0):
 			setConfig(symbol,'self_abort',False)
 			telegramBot.text_message("Okay, will resuming trading.")
-		elif(update.message.text.find('/limit_left ') == 0):
-			amount = float(update.message.text[12:])
-			setConfig(symbol,'max_qty_left',amount)
-			telegramBot.text_message("Okay, limit upgraded to %d %s!" % (amount, symbol))
+		elif(update.message.text.find('/limit_left') == 0):
+			if(len(update.message.text) > 12):
+				amount = float(update.message.text[12:])
+				setConfig(symbol,'max_qty_left',amount)
+				telegramBot.text_message("Okay, limit upgraded to %d %s!" % (amount, symbol))
+			else:
+				max_qty_left = getConfig(symbol,'max_qty_left')
+				telegramBot.text_message("Currently left: %d %s!" % (max_qty_left, symbol))
 		elif(update.message.text.find('/balance') == 0):
 			print "Balance requested via Telegram!"
 			actions['sendBalance'] = True

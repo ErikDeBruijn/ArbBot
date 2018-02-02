@@ -295,7 +295,7 @@ def getTradeMaxNow(symbol):
 	TradeLimits = ConfigParser.ConfigParser()
 	TradeLimits.read('./trade_allowed.ini')
 	max_qty_left = float(TradeLimits.get(symbol,'max_qty_left'))
-	s = "I'm allowed to trade (max_qty_left > 0.0."
+	s = "I'm allowed to trade (max_qty_left > 0.0)."
 	if(max_qty_left == 0.0):
 		s = "Trade limit reached. Use /limit_left 1000 to increase again."
 	telegramBot.text_message(s,topic="Limit."+symbol+".trade_allowed.reached")
