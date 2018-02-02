@@ -75,7 +75,9 @@ def main():
 
 	btc_gains = bg_balance[symbol_base]+kc_balance[symbol_base]
 	btc_gains-= conf('general.starting_balance_btc','float')
-	balanceStr = str(balanceStr + symbol_base+" gains: ").ljust(14)+str(round(btc_gains,5)).ljust(8)+" "+symbol_base+" (about € "+str(round(btc_gains*BTCEUR,2))+")\n"
+	coin_gains = bg_balance[symbol]+kc_balance[symbol]
+	coin_gains-= float(getConfig(symbol,'starting_balance'))
+	balanceStr = str(balanceStr + symbol_base+" gains: ").ljust(14)+str(round(btc_gains,5)).ljust(8)+" "+symbol_base+" (about € "+str(round(btc_gains*BTCEUR,2))+") + "+str(round(coin_gains,4))+" "+symbol+"\n"
 	print balanceStr
 
 	ch_s = "===== BALANCE CHANGE =====\n"
