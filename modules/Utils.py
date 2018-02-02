@@ -113,6 +113,8 @@ symbol = conf('general.symbol').upper()
 symbol_base = conf('general.symbol_base').upper()
 symbol_name = CoinData.getCoinNameFromSymbol(symbol)
 
+BTCEUR = conf('general.btceur_price','float')
+
 graphURL = "http://"+ getIp() + ":"+conf('webserver.webServerPort')+"/"
 
 telegramBot = Telegram(conf('Telegram.telegram_bot_id'))

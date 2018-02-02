@@ -12,9 +12,6 @@ from modules.Utils import *
 import modules.CoinData as CoinData
 import random
 
-BTCEUR = 11328
-
-
 
 def compareCheapness(ex1,ex2):
 	ex1_name, ex1_sell, ex1_buy = ex1
