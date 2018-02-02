@@ -291,11 +291,15 @@ def tradeCap(margin,maxNow,availableForSale=None):
 		maxNow = min(maxNow,availableForSale)
 	return maxNow
 
-
 def getTradeMaxNow(symbol):
 	TradeLimits = ConfigParser.ConfigParser()
 	TradeLimits.read('./trade_allowed.ini')
-	return min(float(TradeLimits.get(symbol,'max_qty_left')),float(TradeLimits.get(symbol,'max_per_trade')))
+	max_qty_left = float(TradeLimits.get(symbol,'max_qty_left'))
+	s = "I'm allowed to trade (max_qty_left > 0.0."
+	if(max_qty_left == 0.0):
+		s = "Trade limit reached. Use /limit_left 1000 to increase again."
+	telegramBot.text_message(s,topic="Limit."+symbol+".trade_allowed.reached")
+	return min(max_qty_left,float(TradeLimits.get(symbol,'max_per_trade')))
 
 def getTradeLeftTotal(symbol):
 	TradeLimits = ConfigParser.ConfigParser()
