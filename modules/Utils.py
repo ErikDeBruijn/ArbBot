@@ -71,7 +71,7 @@ def checkTelegramMessages():
 				setConfig(symbol,'max_qty_left',amount)
 				telegramBot.text_message("Okay, limit upgraded to %d %s!" % (amount, symbol))
 			else:
-				max_qty_left = getConfig(symbol,'max_qty_left')
+				max_qty_left = float(getConfig(symbol,'max_qty_left'))
 				telegramBot.text_message("Currently left: %d %s!" % (max_qty_left, symbol))
 		elif(update.message.text.find('/balance') == 0):
 			print "Balance requested via Telegram!"
