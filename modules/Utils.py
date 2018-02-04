@@ -1,4 +1,5 @@
-
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import ConfigParser
 from ConfigParser import SafeConfigParser
@@ -82,7 +83,10 @@ def checkTelegramMessages():
 			time.sleep(sleepTime)
 			print "Woke up again..."
 		else:
-			print("Received unhandled message: %s" % update.message.text)
+			try:
+				print("Received unhandled message: %s" % update.message.text)
+			except:
+				print("Received unhandled message")
 		setConfig('telegram','last_update_id',update.update_id)
 	return actions
 
